@@ -6,11 +6,22 @@ export class Inning {
     private inningWickets: number;
     private inningOvers: number;
     private inningBalls: number;
+    private target: number | null = null;
     private battingTeamId: string;
     private bowlingTeamId: string;
     private ballList: Ball[];
 
-    private constructor(inningNumber: number, inningRuns: number, inningWickets: number, inningOvers: number, inningBalls: number, battingTeamId: string, bowlingTeamId: string, ballList: Ball[]) {
+    private constructor(
+        inningNumber: number,
+        inningRuns: number,
+        inningWickets: number,
+        inningOvers: number,
+        inningBalls: number,
+        battingTeamId: string,
+        bowlingTeamId: string,
+        ballList: Ball[],
+        target: number | null = null,
+    ) {
         this.inningNumber = inningNumber;
         this.inningRuns = inningRuns;
         this.inningWickets = inningWickets;
@@ -19,13 +30,34 @@ export class Inning {
         this.battingTeamId = battingTeamId;
         this.bowlingTeamId = bowlingTeamId;
         this.ballList = ballList;
+        this.target = target;
     }
 
-    public static create(inningNumber: number, inningRuns: number, inningWickets: number, inningOvers: number, inningBalls: number, battingTeamId: string, bowlingTeamId: string, ballList: Ball[]): Inning {
+    public static create(
+        inningNumber: number,
+        inningRuns: number,
+        inningWickets: number,
+        inningOvers: number,
+        inningBalls: number,
+        battingTeamId: string,
+        bowlingTeamId: string,
+        ballList: Ball[],
+        target: number | null = null,
+    ): Inning {
         if (!inningNumber || !inningRuns || !inningWickets || !inningOvers || !inningBalls || !battingTeamId || !bowlingTeamId || !ballList) {
             throw new Error("Invalid inning data");
         }
-        return new Inning(inningNumber, inningRuns, inningWickets, inningOvers, inningBalls, battingTeamId, bowlingTeamId, ballList);
+        return new Inning(
+            inningNumber,
+            inningRuns,
+            inningWickets,
+            inningOvers,
+            inningBalls,
+            battingTeamId,
+            bowlingTeamId,
+            ballList,
+            target,
+        );
     }
 
     public getInningNumber(): number {
@@ -46,6 +78,10 @@ export class Inning {
 
     public getInningBalls(): number {
         return this.inningBalls;
+    }
+
+    public getTarget(): number | null {
+        return this.target;
     }
 
     public getBattingTeamId(): string {

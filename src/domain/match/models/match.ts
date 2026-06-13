@@ -9,14 +9,14 @@ export enum ResultType {
 
 export class MatchResult {
     private resultType: ResultType;
-    private subjectTeamId?: string;
+    private subjectTeamId: string | null = null;
 
-    private constructor(resultType: ResultType, subjectTeamId?: string) {
+    private constructor(resultType: ResultType, subjectTeamId: string | null = null) {
         this.resultType = resultType;
         this.subjectTeamId = subjectTeamId;
     }
 
-    public static create(resultType: ResultType, subjectTeamId?: string): MatchResult {
+    public static create(resultType: ResultType, subjectTeamId: string | null = null): MatchResult {
         if (!resultType) {
             throw new Error("Invalid match result data");
         }
@@ -27,7 +27,7 @@ export class MatchResult {
         return this.resultType;
     }
 
-    public getSubjectTeamId(): string | undefined {
+    public getSubjectTeamId(): string | null {
         return this.subjectTeamId;
     }
 }

@@ -18,83 +18,112 @@ enum Handedness {
 
 export class Player {
     private playerId: string;
-    private playerName: string;
-    private battingHand?: Handedness;
-    private bowlingHand?: Handedness;
-    private bowlingStyle?: BowlingStyle;
-    private roles?: Role[];
-    private country?: string;
-    private birthDate?: Date;
+    private playerFirstName: string;
+    private playerLastName: string;
+    private playerCommonName: string | null = null;
+    private battingHand: Handedness | null = null;
+    private bowlingHand: Handedness | null = null;
+    private bowlingStyle: BowlingStyle | null = null;
+    private roles: Role[] | null = null;
+    private country: string | null = null;
+    private birthDate: Date | null = null;
 
     private constructor(
-        playerId: string, 
-        playerName: string, 
-        battingHand?: Handedness, 
-        bowlingHand?: Handedness, 
-        bowlingStyle?: BowlingStyle, 
-        roles?: Role[], 
-        country?: string, 
-        birthDate?: Date) {
+        playerId: string,
+        playerFirstName: string,
+        playerLastName: string,
+        playerCommonName: string | null = null,
+        battingHand: Handedness | null = null,
+        bowlingHand: Handedness | null = null,
+        bowlingStyle: BowlingStyle | null = null,
+        roles: Role[] | null = null,
+        country: string | null = null,
+        birthDate: Date | null = null,
+    ) {
         this.playerId = playerId;
-        this.playerName = playerName;
+        this.playerFirstName = playerFirstName;
+        this.playerLastName = playerLastName;
+        this.playerCommonName = playerCommonName;
         this.battingHand = battingHand;
         this.bowlingHand = bowlingHand;
         this.bowlingStyle = bowlingStyle;
-        this.roles = roles ?? [];
+        this.roles = roles;
         this.country = country;
         this.birthDate = birthDate;
     }
 
     public static create(
-        playerId: string, 
-        playerName: string, 
-        battingHand?: Handedness, 
-        bowlingHand?: Handedness, 
-        bowlingStyle?: BowlingStyle, 
-        roles?: Role[], 
-        country?: string, 
-        birthDate?: Date): Player {
-        if (!playerId || !playerName) {
+        playerId: string,
+        playerFirstName: string,
+        playerLastName: string,
+        playerCommonName: string | null = null,
+        battingHand: Handedness | null = null,
+        bowlingHand: Handedness | null = null,
+        bowlingStyle: BowlingStyle | null = null,
+        roles: Role[] | null = null,
+        country: string | null = null,
+        birthDate: Date | null = null,
+    ): Player {
+        if (!playerId || !playerFirstName || !playerLastName) {
             throw new Error("Invalid player data");
         }
-        return new Player(playerId, playerName, battingHand, bowlingHand, bowlingStyle, roles, country, birthDate);
+        return new Player(
+            playerId,
+            playerFirstName,
+            playerLastName,
+            playerCommonName,
+            battingHand,
+            bowlingHand,
+            bowlingStyle,
+            roles,
+            country,
+            birthDate,
+        );
     }
 
     public getPlayerId(): string {
         return this.playerId;
     }
 
-    public getPlayerName(): string {
-        return this.playerName;
+    public getPlayerFirstName(): string {
+        return this.playerFirstName;
     }
-    
-    public getBattingHand(): Handedness | undefined {
+
+    public getPlayerLastName(): string {
+        return this.playerLastName;
+    }
+
+    public getPlayerCommonName(): string | null {
+        return this.playerCommonName;
+    }
+
+    public getBattingHand(): Handedness | null {
         return this.battingHand;
     }
 
-    public getBowlingHand(): Handedness | undefined {
+    public getBowlingHand(): Handedness | null {
         return this.bowlingHand;
     }
-    
-    public getBowlingStyle(): BowlingStyle | undefined {
+
+    public getBowlingStyle(): BowlingStyle | null {
         return this.bowlingStyle;
     }
 
-    public getRoles(): Role[] | undefined {
+    public getRoles(): Role[] | null {
         return this.roles;
     }
-    
-    public getCountry(): string | undefined {
+
+    public getCountry(): string | null {
         return this.country;
     }
 
-    public getBirthDate(): Date | undefined {
+    public getBirthDate(): Date | null {
         return this.birthDate;
     }
 
-    public getAge(): number | undefined {
-        if (!this.birthDate) {
-            return undefined;
+    public getAge(): number | null {
+        if (this.birthDate === null) {
+            return null;
         }
         return new Date().getFullYear() - this.birthDate.getFullYear();
     }

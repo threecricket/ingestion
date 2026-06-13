@@ -102,14 +102,14 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
         this.playerEnrichment = playerEnrichment;
     }
 
-    private getUnknownHomeVenue(): Venue {
+    private async getUnknownHomeVenue(): Promise<Venue> {
         if (this.unknownHomeVenue) {
             return this.unknownHomeVenue;
         }
 
         const venueIdentityInput = toVenueIdentityInput("Unknown");
 
-        this.unknownHomeVenue = this.dependencies.entityResolver.resolveOrCreate({
+        this.unknownHomeVenue = await this.dependencies.entityResolver.resolveOrCreate({
             canonicalIdentity: this.dependencies.identityHasherFactory.toCanonicalIdentity(
                 EntityType.VENUE,
                 venueIdentityInput,
@@ -122,7 +122,7 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
         return this.unknownHomeVenue;
     }
 
-    private resolveVenue(venueName: string): Venue {
+    private async resolveVenue(venueName: string): Promise<Venue> {
         const venueIdentityInput = toVenueIdentityInput(venueName);
 
         return this.dependencies.entityResolver.resolveOrCreate({
@@ -136,7 +136,8 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
         });
     }
 
-    private resolveTeam(teamName: string): Team {
+    private async resolveTeam(teamName: string): Promise<Team> {
+        const homeVenue = await this.getUnknownHomeVenue();
         const teamIdentityInput = toTeamIdentityInput(teamName);
 
         return this.dependencies.entityResolver.resolveOrCreate({
@@ -146,15 +147,15 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
             ),
             findEntity: (id) => this.dependencies.teamRepository.findById(id),
             saveEntity: (team) => this.dependencies.teamRepository.save(team),
-            createEntity: (id) => Team.create(id, teamName, this.getUnknownHomeVenue()),
+            createEntity: (id) => Team.create(id, teamName, homeVenue),
         });
     }
 
-    private resolvePlayer(
+    private async resolvePlayer(
         playerName: string,
         registry: Record<string, string>,
         playerInternalIdsByName: Map<string, string>,
-    ): string {
+    ): Promise<string> {
         const cachedId = playerInternalIdsByName.get(playerName);
         if (cachedId) {
             return cachedId;
@@ -168,7 +169,7 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
         const enriched = this.playerEnrichment.resolveByRegistryHash(registryHash);
         const playerIdentityInput = toPlayerIdentityInputFromEnrichment(enriched);
 
-        const player = this.dependencies.entityResolver.resolveOrCreate({
+        const player = await this.dependencies.entityResolver.resolveOrCreate({
             canonicalIdentity: this.dependencies.identityHasherFactory.toCanonicalIdentity(
                 EntityType.PLAYER,
                 playerIdentityInput,
@@ -183,16 +184,16 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
         return internalId;
     }
 
-    private registerPlayers(
+    private async registerPlayers(
         matchObject: CricsheetsMatchObject,
         playerInternalIdsByName: Map<string, string>,
-    ): Record<string, string> {
+    ): Promise<Record<string, string>> {
         const registry = matchObject.info.registry?.people ?? {};
         const playersByTeam = matchObject.info.players ?? {};
 
         for (const playerNames of Object.values(playersByTeam)) {
             for (const playerName of playerNames) {
-                this.resolvePlayer(playerName, registry, playerInternalIdsByName);
+                await this.resolvePlayer(playerName, registry, playerInternalIdsByName);
             }
         }
 
@@ -292,15 +293,16 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
         return newStats;
     }
 
-    private buildInnings(
+    private async buildInnings(
         matchObject: CricsheetsMatchObject,
         teamIdsByName: Record<string, string>,
         registry: Record<string, string>,
         playerInternalIdsByName: Map<string, string>,
-    ): Inning[] {
+    ): Promise<Inning[]> {
         const ballsPerOver = matchObject.info.balls_per_over ?? 6;
 
-        return matchObject.innings.map((inning, index) => {
+        const innings: Inning[] = [];
+        for (const [index, inning] of matchObject.innings.entries()) {
             const battingTeamId = teamIdsByName[inning.team];
             const bowlingTeamName = matchObject.info.teams.find((team) => team !== inning.team);
 
@@ -323,9 +325,9 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
                 for (const delivery of over.deliveries) {
                     ballNumber += 1;
 
-                    const batterId = this.resolvePlayer(delivery.batter, registry, playerInternalIdsByName);
-                    const bowlerId = this.resolvePlayer(delivery.bowler, registry, playerInternalIdsByName);
-                    const nonStrikerId = this.resolvePlayer(delivery.non_striker, registry, playerInternalIdsByName);
+                    const batterId = await this.resolvePlayer(delivery.batter, registry, playerInternalIdsByName);
+                    const bowlerId = await this.resolvePlayer(delivery.bowler, registry, playerInternalIdsByName);
+                    const nonStrikerId = await this.resolvePlayer(delivery.non_striker, registry, playerInternalIdsByName);
 
                     const isWide = delivery.extras?.wides !== undefined;
                     const isNoBall = delivery.extras?.noballs !== undefined;
@@ -353,7 +355,7 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
                     const isOut = Boolean(wicket);
 
                     if (wicket) {
-                        playerOutId = this.resolvePlayer(wicket.player_out, registry, playerInternalIdsByName);
+                        playerOutId = await this.resolvePlayer(wicket.player_out, registry, playerInternalIdsByName);
                         wicketType = this.mapWicketType(wicket.kind);
                         teamWickets += 1;
 
@@ -397,7 +399,7 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
 
             const { overs, balls } = this.parseDeliveryPosition(lastOver, lastBall, ballsPerOver);
 
-            return Inning.create(
+            innings.push(Inning.create(
                 index + 1,
                 teamRuns,
                 teamWickets,
@@ -407,11 +409,13 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
                 bowlingTeamId,
                 ballList,
                 inning.target?.runs ?? null,
-            );
-        });
+            ));
+        }
+
+        return innings;
     }
 
-    private buildMatchObject(matchObject: CricsheetsMatchObject): Match {
+    private async buildMatchObject(matchObject: CricsheetsMatchObject): Promise<Match> {
         const startDate = new Date(matchObject.info.dates[0]);
         const endDate = new Date(matchObject.info.dates[matchObject.info.dates.length - 1]);
         const format = FORMAT_MAP[matchObject.info.match_type];
@@ -424,10 +428,10 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
             throw new Error(`Expected exactly 2 teams, found ${matchObject.info.teams.length}`);
         }
 
-        const venue = this.resolveVenue(matchObject.info.venue);
+        const venue = await this.resolveVenue(matchObject.info.venue);
         const [team1Name, team2Name] = matchObject.info.teams;
-        const team1 = this.resolveTeam(team1Name);
-        const team2 = this.resolveTeam(team2Name);
+        const team1 = await this.resolveTeam(team1Name);
+        const team2 = await this.resolveTeam(team2Name);
 
         const matchCanonicalIdentity = this.dependencies.identityHasherFactory.toCanonicalIdentity(
             EntityType.MATCH,
@@ -439,7 +443,7 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
             ),
         );
 
-        const existingMatch = this.dependencies.entityResolver.findByCanonicalIdentity({
+        const existingMatch = await this.dependencies.entityResolver.findByCanonicalIdentity({
             canonicalIdentity: matchCanonicalIdentity,
             findEntity: (id) => this.dependencies.matchRepository.findById(id),
         });
@@ -453,8 +457,8 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
         };
 
         const playerInternalIdsByName = new Map<string, string>();
-        const registry = this.registerPlayers(matchObject, playerInternalIdsByName);
-        const innings = this.buildInnings(
+        const registry = await this.registerPlayers(matchObject, playerInternalIdsByName);
+        const innings = await this.buildInnings(
             matchObject,
             teamIdsByName,
             registry,

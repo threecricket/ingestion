@@ -8,11 +8,11 @@ function toMappingKey(identity: CanonicalIdentity): string {
 export class InMemoryCanonicalMappingRepository implements CanonicalMappingRepository {
     private readonly mappings = new Map<string, string>();
 
-    public findInternalId(identity: CanonicalIdentity): string | null {
+    public async findInternalId(identity: CanonicalIdentity): Promise<string | null> {
         return this.mappings.get(toMappingKey(identity)) ?? null;
     }
 
-    public save(identity: CanonicalIdentity, internalId: string): void {
+    public async save(identity: CanonicalIdentity, internalId: string): Promise<void> {
         this.mappings.set(toMappingKey(identity), internalId);
     }
 }

@@ -7,10 +7,14 @@
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "enrich-players": "tsx script/enrich-cricsheet-players.ts"
+    "enrich-players": "tsx script/enrich-cricsheet-players.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",
+    "@types/pg": "^8.20.0",
+    "drizzle-kit": "^0.31.10",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   },
@@ -18,6 +22,8 @@
     "@aws-sdk/client-s3": "^3.1068.0",
     "@aws-sdk/client-sts": "^3.1068.0",
     "@aws-sdk/credential-providers": "^3.1068.0",
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.21.0"
   }
 }

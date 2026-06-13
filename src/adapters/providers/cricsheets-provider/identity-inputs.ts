@@ -2,18 +2,30 @@ import { MatchIdentityInput } from "@/domain/identity/hashing/inputs/match-ident
 import { PlayerIdentityInput } from "@/domain/identity/hashing/inputs/player-identity-input";
 import { TeamIdentityInput } from "@/domain/identity/hashing/inputs/team-identity-input";
 import { VenueIdentityInput } from "@/domain/identity/hashing/inputs/venue-identity-input";
+import { Player } from "@/domain/player/models/player";
+import { CricsheetEnrichedPlayer } from "./player-enrichment";
 
-export function parsePlayerName(name: string): { firstName: string; lastName: string } {
-    const parts = name.trim().split(/\s+/);
-    if (parts.length === 1) {
-        return { firstName: parts[0], lastName: parts[0] };
-    }
-
-    return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+export function toPlayerIdentityInputFromEnrichment(enriched: CricsheetEnrichedPlayer): PlayerIdentityInput {
+    return {
+        fullName: enriched.fullName,
+        dateOfBirth: enriched.dateOfBirth,
+    };
 }
 
-export function toPlayerIdentityInput(playerName: string): PlayerIdentityInput {
-    return { fullName: playerName.trim(), dateOfBirth: null };
+export function createPlayerFromEnrichment(id: string, enriched: CricsheetEnrichedPlayer): Player {
+    return Player.create(
+        id,
+        enriched.firstName,
+        enriched.lastName,
+        enriched.fullName,
+        enriched.commonName,
+        enriched.battingHand,
+        enriched.bowlingHand,
+        enriched.bowlingStyle,
+        enriched.roles,
+        enriched.country,
+        new Date(enriched.dateOfBirth),
+    );
 }
 
 export function toTeamIdentityInput(teamName: string): TeamIdentityInput {

@@ -1,9 +1,9 @@
-enum Role {
+export enum Role {
     BATTER = "batter",
     BOWLER = "bowler",
 }
 
-enum BowlingStyle {
+export enum BowlingStyle {
     FAST = "fast",
     MEDIUM = "medium",
     SPIN = "spin",
@@ -11,7 +11,7 @@ enum BowlingStyle {
     LEG_SPIN = "leg-spin",
 }
 
-enum Handedness {
+export enum Handedness {
     RIGHT_HAND = "right-hand",
     LEFT_HAND = "left-hand",
 }

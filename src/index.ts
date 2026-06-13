@@ -2,6 +2,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import "@/config/load-env";
 import { createCricsheetsProvider } from "@/adapters/providers/cricsheets-provider/provider";
+import { loadCricsheetPlayerEnrichment } from "@/adapters/providers/cricsheets-provider/player-enrichment";
 import { CricsheetsClient } from "@/adapters/providers/cricsheets-provider/client";
 import { EntityResolver } from "@/domain/identity/services/entity-resolver";
 import { IdentityHasherFactory } from "@/domain/identity/hashing/identity-hasher-factory";
@@ -93,10 +94,13 @@ function printMatchSummary(match: Match): void {
 
 async function main(): Promise<void> {
     const matchPath = join(process.cwd(), "cricsheets.json");
+    const enrichmentPath = join(process.cwd(), "data", "cricsheet-player-enriched.json");
+    const playerEnrichment = loadCricsheetPlayerEnrichment(enrichmentPath);
     const { dependencies, counts } = createInMemoryDependencies();
     const client = createLocalCricsheetsClient(matchPath);
-    const provider = createCricsheetsProvider(dependencies, client);
+    const provider = createCricsheetsProvider(dependencies, client, playerEnrichment);
 
+    console.log(`Loaded ${playerEnrichment.size()} enriched players from ${enrichmentPath}`);
     console.log(`Ingesting ${matchPath} ...\n`);
     const matches = await provider.getMatches();
 

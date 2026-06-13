@@ -3,17 +3,17 @@ import { MatchIngestionStrategy, ProviderDependencies } from "@/domain/provider/
 import { Match, MatchFormat, MatchResult, ResultType } from "@/domain/match/models/match";
 import { Inning } from "@/domain/match/models/innings";
 import { Ball, BallResult, WicketType } from "@/domain/match/models/ball";
-import { Player } from "@/domain/player/models/player";
 import { Team } from "@/domain/team/models/team";
 import { Venue } from "@/domain/venue/models/venue";
 import {
-    parsePlayerName,
+    createPlayerFromEnrichment,
     toMatchIdentityInput,
-    toPlayerIdentityInput,
+    toPlayerIdentityInputFromEnrichment,
     toTeamIdentityInput,
     toVenueIdentityInput,
 } from "./identity-inputs";
 import { CricsheetsClient } from "./client";
+import { CricsheetPlayerEnrichmentLookup } from "./player-enrichment";
 
 const FORMAT_MAP: Record<string, MatchFormat> = {
     "TEST": MatchFormat.TEST,
@@ -89,14 +89,17 @@ interface BowlerInningsStats {
 export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy {
     private readonly dependencies;
     private readonly client: CricsheetsClient;
+    private readonly playerEnrichment: CricsheetPlayerEnrichmentLookup;
     private unknownHomeVenue: Venue | null = null;
 
     public constructor(
         dependencies: ProviderDependencies,
         client: CricsheetsClient,
+        playerEnrichment: CricsheetPlayerEnrichmentLookup,
     ) {
         this.dependencies = dependencies;
         this.client = client;
+        this.playerEnrichment = playerEnrichment;
     }
 
     private getUnknownHomeVenue(): Venue {
@@ -161,7 +164,9 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
             throw new Error(`Unknown player: ${playerName}`);
         }
 
-        const playerIdentityInput = toPlayerIdentityInput(playerName);
+        const registryHash = registry[playerName];
+        const enriched = this.playerEnrichment.resolveByRegistryHash(registryHash);
+        const playerIdentityInput = toPlayerIdentityInputFromEnrichment(enriched);
 
         const player = this.dependencies.entityResolver.resolveOrCreate({
             canonicalIdentity: this.dependencies.identityHasherFactory.toCanonicalIdentity(
@@ -170,10 +175,7 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
             ),
             findEntity: (id) => this.dependencies.playerRepository.findById(id),
             saveEntity: (entity) => this.dependencies.playerRepository.save(entity),
-            createEntity: (id) => {
-                const { firstName, lastName } = parsePlayerName(playerName);
-                return Player.create(id, firstName, lastName, playerName, playerName);
-            },
+            createEntity: (id) => createPlayerFromEnrichment(id, enriched),
         });
 
         const internalId = player.getPlayerId();

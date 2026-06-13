@@ -20,6 +20,7 @@ export class Player {
     private playerId: string;
     private playerFirstName: string;
     private playerLastName: string;
+    private playerFullName: string;
     private playerCommonName: string | null = null;
     private battingHand: Handedness | null = null;
     private bowlingHand: Handedness | null = null;
@@ -32,6 +33,7 @@ export class Player {
         playerId: string,
         playerFirstName: string,
         playerLastName: string,
+        playerFullName: string,
         playerCommonName: string | null = null,
         battingHand: Handedness | null = null,
         bowlingHand: Handedness | null = null,
@@ -43,6 +45,7 @@ export class Player {
         this.playerId = playerId;
         this.playerFirstName = playerFirstName;
         this.playerLastName = playerLastName;
+        this.playerFullName = playerFullName;
         this.playerCommonName = playerCommonName;
         this.battingHand = battingHand;
         this.bowlingHand = bowlingHand;
@@ -56,6 +59,7 @@ export class Player {
         playerId: string,
         playerFirstName: string,
         playerLastName: string,
+        playerFullName: string,
         playerCommonName: string | null = null,
         battingHand: Handedness | null = null,
         bowlingHand: Handedness | null = null,
@@ -64,13 +68,14 @@ export class Player {
         country: string | null = null,
         birthDate: Date | null = null,
     ): Player {
-        if (!playerId || !playerFirstName || !playerLastName) {
+        if (!playerId || !playerFirstName || !playerLastName || !playerFullName) {
             throw new Error("Invalid player data");
         }
         return new Player(
             playerId,
             playerFirstName,
             playerLastName,
+            playerFullName,
             playerCommonName,
             battingHand,
             bowlingHand,
@@ -91,6 +96,10 @@ export class Player {
 
     public getPlayerLastName(): string {
         return this.playerLastName;
+    }
+
+    public getPlayerFullName(): string {
+        return this.playerFullName;
     }
 
     public getPlayerCommonName(): string | null {

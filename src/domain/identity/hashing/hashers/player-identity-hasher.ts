@@ -6,8 +6,7 @@ export class PlayerIdentityHasher implements IdentityHasher<PlayerIdentityInput>
     public hash(input: PlayerIdentityInput): string {
         return [
             "player",
-            normalize(input.firstName),
-            normalize(input.lastName),
+            normalize(input.fullName),
             optionalNormalizedField(input.dateOfBirth),
         ].join(":");
     }

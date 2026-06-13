@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "enrich-players": "tsx script/enrich-cricsheet-players.ts"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",

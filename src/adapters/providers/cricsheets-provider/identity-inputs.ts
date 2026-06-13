@@ -13,8 +13,7 @@ export function parsePlayerName(name: string): { firstName: string; lastName: st
 }
 
 export function toPlayerIdentityInput(playerName: string): PlayerIdentityInput {
-    const { firstName, lastName } = parsePlayerName(playerName);
-    return { firstName, lastName, dateOfBirth: null };
+    return { fullName: playerName.trim(), dateOfBirth: null };
 }
 
 export function toTeamIdentityInput(teamName: string): TeamIdentityInput {

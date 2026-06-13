@@ -1,5 +1,4 @@
 export interface PlayerIdentityInput {
-    firstName: string;
-    lastName: string;
+    fullName: string;
     dateOfBirth: string | null;
 }

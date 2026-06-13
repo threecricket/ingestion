@@ -172,7 +172,7 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
             saveEntity: (entity) => this.dependencies.playerRepository.save(entity),
             createEntity: (id) => {
                 const { firstName, lastName } = parsePlayerName(playerName);
-                return Player.create(id, firstName, lastName, playerName);
+                return Player.create(id, firstName, lastName, playerName, playerName);
             },
         });
 

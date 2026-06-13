@@ -3,4 +3,3 @@ dist/
 .env
 
 cricsheets.json
-data/cricsheet-player-enriched.json

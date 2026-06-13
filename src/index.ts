@@ -11,7 +11,6 @@ import { Team } from "@/domain/team/models/team";
 import { Venue } from "@/domain/venue/models/venue";
 import { ProviderDependencies } from "@/domain/provider/models/provider";
 import { InMemoryCanonicalMappingRepository } from "@/infrastructure/identity/in-memory-canonical-mapping-repository";
-import { InMemoryProviderMappingRepository } from "@/infrastructure/identity/in-memory-provider-mapping-repository";
 import { UuidIdGenerator } from "@/infrastructure/identity/uuid-id-generator";
 
 function createInMemoryDependencies(): {
@@ -22,11 +21,9 @@ function createInMemoryDependencies(): {
     const teams = new Map<string, Team>();
     const venues = new Map<string, Venue>();
     const matches = new Map<string, Match>();
-    const providerMappingRepository = new InMemoryProviderMappingRepository();
     const canonicalMappingRepository = new InMemoryCanonicalMappingRepository();
     const idGenerator = new UuidIdGenerator();
     const entityResolver = new EntityResolver(
-        providerMappingRepository,
         canonicalMappingRepository,
         idGenerator,
     );

@@ -1,5 +1,4 @@
 import { EntityType } from "@/domain/identity/models/entity-type";
-import { ProviderReference } from "@/domain/identity/models/provider-reference";
 import { MatchIngestionStrategy, ProviderDependencies } from "@/domain/provider/models/provider";
 import { Match, MatchFormat, MatchResult, ResultType } from "@/domain/match/models/match";
 import { Inning } from "@/domain/match/models/innings";
@@ -8,12 +7,6 @@ import { Player } from "@/domain/player/models/player";
 import { Team } from "@/domain/team/models/team";
 import { Venue } from "@/domain/venue/models/venue";
 import {
-    cricsheetsMatchExternalId,
-    cricsheetsPlayerExternalId,
-    cricsheetsTeamExternalId,
-    cricsheetsVenueExternalId,
-} from "./external-ids";
-import {
     parsePlayerName,
     toMatchIdentityInput,
     toPlayerIdentityInput,
@@ -21,8 +14,6 @@ import {
     toVenueIdentityInput,
 } from "./identity-inputs";
 import { CricsheetsClient } from "./client";
-
-const PROVIDER_ID = "cricsheets";
 
 const FORMAT_MAP: Record<string, MatchFormat> = {
     "TEST": MatchFormat.TEST,
@@ -116,11 +107,6 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
         const venueIdentityInput = toVenueIdentityInput("Unknown");
 
         this.unknownHomeVenue = this.dependencies.entityResolver.resolveOrCreate({
-            providerReference: ProviderReference.create(
-                PROVIDER_ID,
-                EntityType.VENUE,
-                cricsheetsVenueExternalId("Unknown"),
-            ),
             canonicalIdentity: this.dependencies.identityHasherFactory.toCanonicalIdentity(
                 EntityType.VENUE,
                 venueIdentityInput,
@@ -137,11 +123,6 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
         const venueIdentityInput = toVenueIdentityInput(venueName);
 
         return this.dependencies.entityResolver.resolveOrCreate({
-            providerReference: ProviderReference.create(
-                PROVIDER_ID,
-                EntityType.VENUE,
-                cricsheetsVenueExternalId(venueName),
-            ),
             canonicalIdentity: this.dependencies.identityHasherFactory.toCanonicalIdentity(
                 EntityType.VENUE,
                 venueIdentityInput,
@@ -156,11 +137,6 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
         const teamIdentityInput = toTeamIdentityInput(teamName);
 
         return this.dependencies.entityResolver.resolveOrCreate({
-            providerReference: ProviderReference.create(
-                PROVIDER_ID,
-                EntityType.TEAM,
-                cricsheetsTeamExternalId(teamName),
-            ),
             canonicalIdentity: this.dependencies.identityHasherFactory.toCanonicalIdentity(
                 EntityType.TEAM,
                 teamIdentityInput,
@@ -181,19 +157,13 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
             return cachedId;
         }
 
-        const externalId = registry[playerName];
-        if (!externalId) {
+        if (!registry[playerName]) {
             throw new Error(`Unknown player: ${playerName}`);
         }
 
         const playerIdentityInput = toPlayerIdentityInput(playerName);
 
         const player = this.dependencies.entityResolver.resolveOrCreate({
-            providerReference: ProviderReference.create(
-                PROVIDER_ID,
-                EntityType.PLAYER,
-                cricsheetsPlayerExternalId(externalId),
-            ),
             canonicalIdentity: this.dependencies.identityHasherFactory.toCanonicalIdentity(
                 EntityType.PLAYER,
                 playerIdentityInput,
@@ -439,21 +409,7 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
         });
     }
 
-    private buildMatchObject(matchKey: string, matchObject: CricsheetsMatchObject): Match {
-        const matchReference = ProviderReference.create(
-            PROVIDER_ID,
-            EntityType.MATCH,
-            cricsheetsMatchExternalId(matchKey),
-        );
-
-        const existingMatch = this.dependencies.entityResolver.findByProviderReference({
-            providerReference: matchReference,
-            findEntity: (id) => this.dependencies.matchRepository.findById(id),
-        });
-        if (existingMatch) {
-            return existingMatch;
-        }
-
+    private buildMatchObject(matchObject: CricsheetsMatchObject): Match {
         const startDate = new Date(matchObject.info.dates[0]);
         const endDate = new Date(matchObject.info.dates[matchObject.info.dates.length - 1]);
         const format = FORMAT_MAP[matchObject.info.match_type];
@@ -470,6 +426,25 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
         const [team1Name, team2Name] = matchObject.info.teams;
         const team1 = this.resolveTeam(team1Name);
         const team2 = this.resolveTeam(team2Name);
+
+        const matchCanonicalIdentity = this.dependencies.identityHasherFactory.toCanonicalIdentity(
+            EntityType.MATCH,
+            toMatchIdentityInput(
+                matchObject.info.dates[0],
+                matchObject.info.match_type,
+                team1.getTeamId(),
+                team2.getTeamId(),
+            ),
+        );
+
+        const existingMatch = this.dependencies.entityResolver.findByCanonicalIdentity({
+            canonicalIdentity: matchCanonicalIdentity,
+            findEntity: (id) => this.dependencies.matchRepository.findById(id),
+        });
+        if (existingMatch) {
+            return existingMatch;
+        }
+
         const teamIdsByName = {
             [team1Name]: team1.getTeamId(),
             [team2Name]: team2.getTeamId(),
@@ -484,19 +459,8 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
             playerInternalIdsByName,
         );
 
-        const matchIdentityInput = toMatchIdentityInput(
-            matchObject.info.dates[0],
-            matchObject.info.match_type,
-            team1.getTeamId(),
-            team2.getTeamId(),
-        );
-
         return this.dependencies.entityResolver.resolveOrCreate({
-            providerReference: matchReference,
-            canonicalIdentity: this.dependencies.identityHasherFactory.toCanonicalIdentity(
-                EntityType.MATCH,
-                matchIdentityInput,
-            ),
+            canonicalIdentity: matchCanonicalIdentity,
             findEntity: (id) => this.dependencies.matchRepository.findById(id),
             saveEntity: (match) => this.dependencies.matchRepository.save(match),
             createEntity: (id) => Match.create(
@@ -517,7 +481,7 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
         const matchObjects = await this.client.getMatchObjects();
         const matches = await Promise.all(matchObjects.map(async (matchKey) => {
             const matchObject = await this.client.getMatch(matchKey);
-            return this.buildMatchObject(matchKey, matchObject);
+            return this.buildMatchObject(matchObject);
         }));
 
         return matches;

@@ -6,8 +6,6 @@ import { VenueRepository } from "@/contexts/venue/domain/repositories/venue-repo
 import { VenueIdentityInput } from "@/contexts/venue/identity/venue-identity-input";
 
 export class ResolveVenueUseCase {
-    private unknownHomeVenue: Venue | null = null;
-
     public constructor(
         private readonly entityResolver: EntityResolver,
         private readonly identityHasherFactory: IdentityHasherFactory,
@@ -29,14 +27,5 @@ export class ResolveVenueUseCase {
                 defaults.country ?? "Unknown",
             ),
         });
-    }
-
-    public async resolveUnknownHomeVenue(): Promise<Venue> {
-        if (this.unknownHomeVenue) {
-            return this.unknownHomeVenue;
-        }
-
-        this.unknownHomeVenue = await this.execute({ venueName: "Unknown" });
-        return this.unknownHomeVenue;
     }
 }

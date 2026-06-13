@@ -1,21 +1,17 @@
-import { Venue } from "@/contexts/venue/domain/models/venue";
-
 export class Team {
     private teamId: string;
     private teamName: string;
-    private homeVenue: Venue;
 
-    private constructor(teamId: string, teamName: string, homeVenue: Venue) {
+    private constructor(teamId: string, teamName: string) {
         this.teamId = teamId;
         this.teamName = teamName;
-        this.homeVenue = homeVenue;
     }
 
-    public static create(teamId: string, teamName: string, homeVenue: Venue): Team {
-        if (!teamId || !teamName || !homeVenue) {
+    public static create(teamId: string, teamName: string): Team {
+        if (!teamId || !teamName) {
             throw new Error("Invalid team data");
         }
-        return new Team(teamId, teamName, homeVenue);
+        return new Team(teamId, teamName);
     }
 
     public getTeamId(): string {
@@ -24,9 +20,5 @@ export class Team {
 
     public getTeamName(): string {
         return this.teamName;
-    }
-
-    public getHomeVenue(): Venue {
-        return this.homeVenue;
     }
 }

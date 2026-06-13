@@ -37,7 +37,7 @@ function createUseCases(
     matchRepository: ReturnType<typeof createInMemoryMatchRepository>["repository"] | PostgresMatchRepository,
 ) {
     const resolveVenue = new ResolveVenueUseCase(entityResolver, identityHasherFactory, venueRepository);
-    const resolveTeam = new ResolveTeamUseCase(entityResolver, identityHasherFactory, teamRepository, resolveVenue);
+    const resolveTeam = new ResolveTeamUseCase(entityResolver, identityHasherFactory, teamRepository);
     const resolvePlayer = new ResolvePlayerUseCase(entityResolver, identityHasherFactory, playerRepository);
     const ingestMatch = new IngestMatchUseCase(
         entityResolver,

@@ -1,16 +1,15 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import "@/config/load-env";
-import { createCricsheetsProvider } from "@/adapters/providers/cricsheets-provider/provider";
-import { loadCricsheetPlayerEnrichment } from "@/adapters/providers/cricsheets-provider/player-enrichment";
-import { CricsheetsClient } from "@/adapters/providers/cricsheets-provider/client";
-import { Match } from "@/domain/match/models/match";
-import { ProviderDependencies } from "@/domain/provider/models/provider";
-import { createMemoryDependencies } from "@/infrastructure/persistence/memory/create-dependencies";
-import { createPostgresDependencies } from "@/infrastructure/persistence/postgres/create-dependencies";
+import { createCricsheetsProvider } from "@/contexts/ingestion/adapters/cricsheets/provider";
+import { loadCricsheetPlayerEnrichment } from "@/contexts/ingestion/adapters/cricsheets/player-enrichment";
+import { CricsheetsClient } from "@/contexts/ingestion/adapters/cricsheets/client";
+import { Match } from "@/contexts/match/domain/models/match";
+import { IngestionDependencies } from "@/contexts/ingestion/domain/ingestion-dependencies";
+import { createMemoryDependencies, createPostgresDependencies } from "@/bootstrap/create-dependencies";
 
 interface AppDependencies {
-    dependencies: ProviderDependencies;
+    dependencies: IngestionDependencies;
     counts?: () => { players: number; teams: number; venues: number; matches: number };
     close?: () => Promise<void>;
 }

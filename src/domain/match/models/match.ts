@@ -49,7 +49,7 @@ export class Match {
     private matchFormat: MatchFormat;
     private innings: Inning[];
 
-    private constructor(matchId: string, matchVenueId: string, matchTeam1Id: string, matchTeam2Id: string, matchStartDate: Date, matchEndDate: Date, matchResult: MatchResult, matchFormat: MatchFormat) {
+    private constructor(matchId: string, matchVenueId: string, matchTeam1Id: string, matchTeam2Id: string, matchStartDate: Date, matchEndDate: Date, matchResult: MatchResult, matchFormat: MatchFormat, innings: Inning[]) {
         this.matchId = matchId;
         this.matchVenueId = matchVenueId;
         this.matchTeam1Id = matchTeam1Id;
@@ -58,14 +58,14 @@ export class Match {
         this.matchEndDate = matchEndDate;
         this.matchResult = matchResult;
         this.matchFormat = matchFormat;
-        this.innings = [];
+        this.innings = innings;
     }
 
-    public static create(matchId: string, matchVenueId: string, matchTeam1Id: string, matchTeam2Id: string, matchStartDate: Date, matchEndDate: Date, matchResult: MatchResult, matchFormat: MatchFormat): Match {
+    public static create(matchId: string, matchVenueId: string, matchTeam1Id: string, matchTeam2Id: string, matchStartDate: Date, matchEndDate: Date, matchResult: MatchResult, matchFormat: MatchFormat, innings: Inning[]): Match {
         if (!matchId || !matchVenueId || !matchTeam1Id || !matchTeam2Id || !matchStartDate || !matchEndDate || !matchResult || !matchFormat) {
             throw new Error("Invalid match data");
         }
-        return new Match(matchId, matchVenueId, matchTeam1Id, matchTeam2Id, matchStartDate, matchEndDate, matchResult, matchFormat);
+        return new Match(matchId, matchVenueId, matchTeam1Id, matchTeam2Id, matchStartDate, matchEndDate, matchResult, matchFormat, innings);
     }
 
     public getMatchId(): string {

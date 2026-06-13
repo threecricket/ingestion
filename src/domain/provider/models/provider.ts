@@ -1,16 +1,20 @@
+import { EntityResolver } from "@/domain/identity/services/entity-resolver";
 import { Match } from "@/domain/match/models/match";
+import { MatchRepository } from "@/domain/match/repositories/match-repository";
 import { PlayerRepository } from "@/domain/player/repositories/player-repository";
 import { TeamRepository } from "@/domain/team/repositories/team-repository";
 import { VenueRepository } from "@/domain/venue/repositories/venue-repository";
 
 export interface ProviderDependencies {
+    entityResolver: EntityResolver;
     playerRepository: PlayerRepository;
     teamRepository: TeamRepository;
     venueRepository: VenueRepository;
+    matchRepository: MatchRepository;
 }
 
 export interface MatchIngestionStrategy {
-    getMatches(): Match[];
+    getMatches(): Promise<Match[]>;
 }
 
 export class Provider {
@@ -33,8 +37,8 @@ export class Provider {
         return new Provider(providerId, createStrategy(dependencies));
     }
 
-    public getMatches(): Match[] {
-        return this.strategy.getMatches();
+    public async getMatches(): Promise<Match[]> {
+        return await this.strategy.getMatches();
     }
 
     public getProviderId(): string {

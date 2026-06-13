@@ -44,7 +44,16 @@ export class Inning {
         ballList: Ball[],
         target: number | null = null,
     ): Inning {
-        if (!inningNumber || !inningRuns || !inningWickets || !inningOvers || !inningBalls || !battingTeamId || !bowlingTeamId || !ballList) {
+        if (
+            !inningNumber
+            || inningRuns === undefined
+            || inningWickets === undefined
+            || inningOvers === undefined
+            || inningBalls === undefined
+            || !battingTeamId
+            || !bowlingTeamId
+            || !ballList
+        ) {
             throw new Error("Invalid inning data");
         }
         return new Inning(

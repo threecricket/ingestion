@@ -1,4 +1,4 @@
-enum WicketType {
+export enum WicketType {
     BOWLED = "bowled",
     CAUGHT = "caught",
     LBW = "lbw",
@@ -14,10 +14,10 @@ export class BallResult {
     private extras: number;
     private wide: boolean;
     private noBall: boolean;
-    private playerOutId: string;
-    private wicketType: WicketType;
+    private playerOutId: string | null;
+    private wicketType: WicketType | null;
 
-    private constructor(runs: number, out: boolean, extras: number, wide: boolean, noBall: boolean, playerOutId: string, wicketType: WicketType) {
+    private constructor(runs: number, out: boolean, extras: number, wide: boolean, noBall: boolean, playerOutId: string | null, wicketType: WicketType | null) {
         this.runs = runs;
         this.out = out;
         this.extras = extras;
@@ -27,8 +27,15 @@ export class BallResult {
         this.wicketType = wicketType;
     }
 
-    public static create(runs: number, out: boolean, extras: number, wide: boolean, noBall: boolean, playerOutId: string, wicketType: WicketType): BallResult {
-        if (!runs || !out || !extras || !wide || !noBall || !playerOutId || !wicketType) {
+    public static create(runs: number, out: boolean, extras: number, wide: boolean, noBall: boolean, playerOutId: string | null, wicketType: WicketType | null): BallResult {
+        if (
+            runs === undefined
+            || out === undefined
+            || extras === undefined
+            || wide === undefined
+            || noBall === undefined
+            || (out && (!playerOutId || !wicketType))
+        ) {
             throw new Error("Invalid ball result data");
         }
         return new BallResult(runs, out, extras, wide, noBall, playerOutId, wicketType);
@@ -54,11 +61,11 @@ export class BallResult {
         return this.noBall;
     }
 
-    public getPlayerOutId(): string {
+    public getPlayerOutId(): string | null {
         return this.playerOutId;
     }
 
-    public getWicketType(): WicketType {
+    public getWicketType(): WicketType | null {
         return this.wicketType;
     }
 }
@@ -101,7 +108,22 @@ export class Ball {
     }
 
     public static create(ballNumber: number, runs: number, wickets: number, batterId: string, batterRuns: number, batterBalls: number, bowlerId: string, bowlerRuns: number, bowlerBalls: number, bowlerWickets: number, nonStrikerId: string, nonStrikerRuns: number, nonStrikerBalls: number, ballResult: BallResult): Ball {
-        if (!ballNumber || !runs || !wickets || !batterId || !batterRuns || !batterBalls || !bowlerId || !bowlerRuns || !bowlerBalls || !bowlerWickets || !nonStrikerId || !nonStrikerRuns || !nonStrikerBalls || !ballResult) {
+        if (
+            !ballNumber
+            || runs === undefined
+            || wickets === undefined
+            || !batterId
+            || batterRuns === undefined
+            || batterBalls === undefined
+            || !bowlerId
+            || bowlerRuns === undefined
+            || bowlerBalls === undefined
+            || bowlerWickets === undefined
+            || !nonStrikerId
+            || nonStrikerRuns === undefined
+            || nonStrikerBalls === undefined
+            || !ballResult
+        ) {
             throw new Error("Invalid ball data");
         }
 

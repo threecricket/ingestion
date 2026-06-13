@@ -1,4 +1,5 @@
 import { EntityResolver } from "@/domain/identity/services/entity-resolver";
+import { IdentityHasherFactory } from "@/domain/identity/hashing/identity-hasher-factory";
 import { Match } from "@/domain/match/models/match";
 import { MatchRepository } from "@/domain/match/repositories/match-repository";
 import { PlayerRepository } from "@/domain/player/repositories/player-repository";
@@ -7,6 +8,7 @@ import { VenueRepository } from "@/domain/venue/repositories/venue-repository";
 
 export interface ProviderDependencies {
     entityResolver: EntityResolver;
+    identityHasherFactory: IdentityHasherFactory;
     playerRepository: PlayerRepository;
     teamRepository: TeamRepository;
     venueRepository: VenueRepository;

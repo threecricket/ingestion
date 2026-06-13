@@ -1,9 +1,6 @@
-export function normalize(value: string): string {
-    return value
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
-}
+import { normalize } from "@/domain/identity/hashing/normalize";
+
+export { normalize };
 
 export function cricsheetsPlayerExternalId(registryHash: string): string {
     return registryHash;

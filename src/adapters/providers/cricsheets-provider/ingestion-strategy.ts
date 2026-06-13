@@ -13,6 +13,13 @@ import {
     cricsheetsTeamExternalId,
     cricsheetsVenueExternalId,
 } from "./external-ids";
+import {
+    parsePlayerName,
+    toMatchIdentityInput,
+    toPlayerIdentityInput,
+    toTeamIdentityInput,
+    toVenueIdentityInput,
+} from "./identity-inputs";
 import { CricsheetsClient } from "./client";
 
 const PROVIDER_ID = "cricsheets";
@@ -88,15 +95,6 @@ interface BowlerInningsStats {
     wickets: number;
 }
 
-function parsePlayerName(name: string): { firstName: string; lastName: string } {
-    const parts = name.trim().split(/\s+/);
-    if (parts.length === 1) {
-        return { firstName: parts[0], lastName: parts[0] };
-    }
-
-    return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
-}
-
 export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy {
     private readonly dependencies;
     private readonly client: CricsheetsClient;
@@ -115,11 +113,17 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
             return this.unknownHomeVenue;
         }
 
+        const venueIdentityInput = toVenueIdentityInput("Unknown");
+
         this.unknownHomeVenue = this.dependencies.entityResolver.resolveOrCreate({
             providerReference: ProviderReference.create(
                 PROVIDER_ID,
                 EntityType.VENUE,
                 cricsheetsVenueExternalId("Unknown"),
+            ),
+            canonicalIdentity: this.dependencies.identityHasherFactory.toCanonicalIdentity(
+                EntityType.VENUE,
+                venueIdentityInput,
             ),
             findEntity: (id) => this.dependencies.venueRepository.findById(id),
             saveEntity: (venue) => this.dependencies.venueRepository.save(venue),
@@ -130,11 +134,17 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
     }
 
     private resolveVenue(venueName: string): Venue {
+        const venueIdentityInput = toVenueIdentityInput(venueName);
+
         return this.dependencies.entityResolver.resolveOrCreate({
             providerReference: ProviderReference.create(
                 PROVIDER_ID,
                 EntityType.VENUE,
                 cricsheetsVenueExternalId(venueName),
+            ),
+            canonicalIdentity: this.dependencies.identityHasherFactory.toCanonicalIdentity(
+                EntityType.VENUE,
+                venueIdentityInput,
             ),
             findEntity: (id) => this.dependencies.venueRepository.findById(id),
             saveEntity: (venue) => this.dependencies.venueRepository.save(venue),
@@ -143,11 +153,17 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
     }
 
     private resolveTeam(teamName: string): Team {
+        const teamIdentityInput = toTeamIdentityInput(teamName);
+
         return this.dependencies.entityResolver.resolveOrCreate({
             providerReference: ProviderReference.create(
                 PROVIDER_ID,
                 EntityType.TEAM,
                 cricsheetsTeamExternalId(teamName),
+            ),
+            canonicalIdentity: this.dependencies.identityHasherFactory.toCanonicalIdentity(
+                EntityType.TEAM,
+                teamIdentityInput,
             ),
             findEntity: (id) => this.dependencies.teamRepository.findById(id),
             saveEntity: (team) => this.dependencies.teamRepository.save(team),
@@ -170,11 +186,17 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
             throw new Error(`Unknown player: ${playerName}`);
         }
 
+        const playerIdentityInput = toPlayerIdentityInput(playerName);
+
         const player = this.dependencies.entityResolver.resolveOrCreate({
             providerReference: ProviderReference.create(
                 PROVIDER_ID,
                 EntityType.PLAYER,
                 cricsheetsPlayerExternalId(externalId),
+            ),
+            canonicalIdentity: this.dependencies.identityHasherFactory.toCanonicalIdentity(
+                EntityType.PLAYER,
+                playerIdentityInput,
             ),
             findEntity: (id) => this.dependencies.playerRepository.findById(id),
             saveEntity: (entity) => this.dependencies.playerRepository.save(entity),
@@ -462,8 +484,19 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
             playerInternalIdsByName,
         );
 
+        const matchIdentityInput = toMatchIdentityInput(
+            matchObject.info.dates[0],
+            matchObject.info.match_type,
+            team1.getTeamId(),
+            team2.getTeamId(),
+        );
+
         return this.dependencies.entityResolver.resolveOrCreate({
             providerReference: matchReference,
+            canonicalIdentity: this.dependencies.identityHasherFactory.toCanonicalIdentity(
+                EntityType.MATCH,
+                matchIdentityInput,
+            ),
             findEntity: (id) => this.dependencies.matchRepository.findById(id),
             saveEntity: (match) => this.dependencies.matchRepository.save(match),
             createEntity: (id) => Match.create(

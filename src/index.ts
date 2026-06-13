@@ -4,11 +4,13 @@ import "@/config/load-env";
 import { createCricsheetsProvider } from "@/adapters/providers/cricsheets-provider/provider";
 import { CricsheetsClient } from "@/adapters/providers/cricsheets-provider/client";
 import { EntityResolver } from "@/domain/identity/services/entity-resolver";
+import { IdentityHasherFactory } from "@/domain/identity/hashing/identity-hasher-factory";
 import { Match } from "@/domain/match/models/match";
 import { Player } from "@/domain/player/models/player";
 import { Team } from "@/domain/team/models/team";
 import { Venue } from "@/domain/venue/models/venue";
 import { ProviderDependencies } from "@/domain/provider/models/provider";
+import { InMemoryCanonicalMappingRepository } from "@/infrastructure/identity/in-memory-canonical-mapping-repository";
 import { InMemoryProviderMappingRepository } from "@/infrastructure/identity/in-memory-provider-mapping-repository";
 import { UuidIdGenerator } from "@/infrastructure/identity/uuid-id-generator";
 
@@ -21,12 +23,19 @@ function createInMemoryDependencies(): {
     const venues = new Map<string, Venue>();
     const matches = new Map<string, Match>();
     const providerMappingRepository = new InMemoryProviderMappingRepository();
+    const canonicalMappingRepository = new InMemoryCanonicalMappingRepository();
     const idGenerator = new UuidIdGenerator();
-    const entityResolver = new EntityResolver(providerMappingRepository, idGenerator);
+    const entityResolver = new EntityResolver(
+        providerMappingRepository,
+        canonicalMappingRepository,
+        idGenerator,
+    );
+    const identityHasherFactory = new IdentityHasherFactory();
 
     return {
         dependencies: {
             entityResolver,
+            identityHasherFactory,
             playerRepository: {
                 findById: (id) => players.get(id) ?? null,
                 save: (player) => { players.set(player.getPlayerId(), player); },

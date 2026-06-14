@@ -3,7 +3,7 @@ CREATE TYPE "public"."entity_type" AS ENUM('player', 'team', 'venue', 'match');-
 CREATE TYPE "public"."handedness" AS ENUM('right-hand', 'left-hand');--> statement-breakpoint
 CREATE TYPE "public"."match_format" AS ENUM('test', 'odi', 't20');--> statement-breakpoint
 CREATE TYPE "public"."result_type" AS ENUM('won', 'lost', 'tie', 'no_result');--> statement-breakpoint
-CREATE TYPE "public"."wicket_type" AS ENUM('bowled', 'caught', 'lbw', 'stump', 'run_out', 'hit_wicket', 'obstructing');--> statement-breakpoint
+CREATE TYPE "public"."wicket_type" AS ENUM('bowled', 'caught', 'lbw', 'stump', 'run_out', 'hit_wicket', 'obstructing', 'other');--> statement-breakpoint
 CREATE TABLE "balls" (
 	"match_id" uuid NOT NULL,
 	"inning_number" integer NOT NULL,

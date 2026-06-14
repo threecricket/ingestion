@@ -1,43 +1,6 @@
-import { readFileSync } from "fs";
-import { join } from "path";
 import "@/config/load-env";
-import { createCricsheetsProvider } from "@/contexts/ingestion/adapters/cricsheets/provider";
-import { loadCricsheetPlayerEnrichment } from "@/contexts/ingestion/adapters/cricsheets/player-enrichment";
-import { CricsheetsMatchMapper } from "@/contexts/ingestion/adapters/cricsheets/cricsheets-match-mapper";
-import { CricsheetsClient } from "@/contexts/ingestion/adapters/cricsheets/client";
 import { Match } from "@/contexts/match/domain/models/match";
-import { IngestionDependencies } from "@/contexts/ingestion/domain/ingestion-dependencies";
-import { createMemoryDependencies, createPostgresDependencies } from "@/bootstrap/create-dependencies";
-
-interface AppDependencies {
-    dependencies: IngestionDependencies;
-    counts?: () => { players: number; teams: number; venues: number; matches: number };
-    close?: () => Promise<void>;
-}
-
-async function createDependencies(): Promise<AppDependencies> {
-    const persistence = process.env.PERSISTENCE ?? "memory";
-
-    if (persistence === "postgres") {
-        const databaseUrl = process.env.DATABASE_URL;
-        if (!databaseUrl) {
-            throw new Error("DATABASE_URL is required when PERSISTENCE=postgres");
-        }
-
-        return createPostgresDependencies(databaseUrl);
-    }
-
-    return createMemoryDependencies();
-}
-
-function createLocalCricsheetsClient(matchPath: string): CricsheetsClient {
-    const matchData = JSON.parse(readFileSync(matchPath, "utf8"));
-
-    return {
-        getMatchObjects: async () => [matchPath],
-        getMatch: async () => matchData,
-    } as unknown as CricsheetsClient;
-}
+import { runIngestionPipeline } from "@/bootstrap/ingestion-pipeline";
 
 function printMatchSummary(match: Match): void {
     const result = match.getMatchResult();
@@ -63,27 +26,31 @@ function printMatchSummary(match: Match): void {
 }
 
 async function main(): Promise<void> {
-    const matchPath = join(process.cwd(), "cricsheets.json");
-    const enrichmentPath = join(process.cwd(), "data", "cricsheet-player-enriched.json");
-    const playerEnrichment = loadCricsheetPlayerEnrichment(enrichmentPath);
-    const { dependencies, counts, close } = await createDependencies();
-    const client = createLocalCricsheetsClient(matchPath);
-    const mapper = new CricsheetsMatchMapper(playerEnrichment);
-    const provider = createCricsheetsProvider(dependencies, client, mapper);
+    const pipeline = await runIngestionPipeline();
 
     try {
-        console.log(`Loaded ${playerEnrichment.size()} enriched players from ${enrichmentPath}`);
-        console.log(`Ingesting ${matchPath} ...\n`);
-        const matches = await provider.getMatches();
+        const { enrichmentPath, enrichedPlayerCount, providerResults, counts } = pipeline.result;
 
-        if (matches.length === 0) {
-            console.log("No matches ingested.");
-            return;
+        console.log(`Loaded ${enrichedPlayerCount} enriched players from ${enrichmentPath}`);
+        console.log(`Running ${pipeline.providers.length} ingestion provider(s)...\n`);
+
+        let totalMatches = 0;
+
+        for (const { providerId, matches } of providerResults) {
+            console.log(`Provider: ${providerId}`);
+            console.log(`Ingested ${matches.length} match(es)\n`);
+
+            for (const match of matches) {
+                printMatchSummary(match);
+                console.log();
+            }
+
+            totalMatches += matches.length;
         }
 
-        for (const match of matches) {
-            printMatchSummary(match);
-            console.log();
+        if (totalMatches === 0) {
+            console.log("No matches ingested.");
+            return;
         }
 
         if (counts) {
@@ -95,13 +62,13 @@ async function main(): Promise<void> {
             console.log(`  Matches: ${entityCounts.matches}`);
         }
     } finally {
-        if (close) {
-            await close();
+        if (pipeline.close) {
+            await pipeline.close();
         }
     }
 }
 
 main().catch((error: unknown) => {
-    console.error("Cricsheets ingestion test failed:", error);
+    console.error("Ingestion pipeline failed:", error);
     process.exit(1);
 });

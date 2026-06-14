@@ -44,7 +44,7 @@ export class EntityResolver {
             }
         }
 
-        const newInternalId = this.idGenerator.generate();
+        const newInternalId = this.idGenerator.generate(params.canonicalIdentity.getFingerprint());
         const entity = params.createEntity(newInternalId);
         await params.saveEntity(entity);
         await this.canonicalMappingRepository.save(params.canonicalIdentity, newInternalId);

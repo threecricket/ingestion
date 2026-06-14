@@ -6,6 +6,7 @@ export enum WicketType {
     RUN_OUT = "run_out",
     HIT_WICKET = "hit_wicket",
     OBSTRUCTING = "obstructing",
+    OTHER = "other",
 }
 
 export class BallResult {

@@ -1,6 +1,6 @@
 import { EntityResolver } from "@/shared/identity/domain/services/entity-resolver";
 import { IdentityHasherFactory } from "@/shared/identity/domain/hashing/identity-hasher-factory";
-import { UuidIdGenerator } from "@/shared/identity/infrastructure/uuid-id-generator";
+import { FingerprintIdGenerator } from "@/shared/identity/infrastructure/fingerprint-id-generator";
 import { InMemoryCanonicalMappingRepository } from "@/shared/identity/infrastructure/persistence/memory/canonical-mapping-repository";
 import { PostgresCanonicalMappingRepository } from "@/shared/identity/infrastructure/persistence/postgres/canonical-mapping-repository";
 import { createDatabaseClient } from "@/shared/persistence/postgres/client";
@@ -20,7 +20,7 @@ import { createInMemoryTeamRepository } from "@/contexts/team/infrastructure/mem
 import { createInMemoryMatchRepository } from "@/contexts/match/infrastructure/memory/match-repository";
 
 function createIdentityServices(canonicalMappingRepository: InMemoryCanonicalMappingRepository | PostgresCanonicalMappingRepository) {
-    const idGenerator = new UuidIdGenerator();
+    const idGenerator = new FingerprintIdGenerator();
     const entityResolver = new EntityResolver(canonicalMappingRepository, idGenerator);
     const identityHasherFactory = new IdentityHasherFactory();
     registerIdentityHashers(identityHasherFactory);

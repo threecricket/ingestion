@@ -173,7 +173,7 @@ export class CricsheetsMatchMapper {
             case "obstructing the field":
                 return WicketType.OBSTRUCTING;
             default:
-                throw new Error(`Unsupported wicket kind: ${kind}`);
+                return WicketType.OTHER;
         }
     }
 

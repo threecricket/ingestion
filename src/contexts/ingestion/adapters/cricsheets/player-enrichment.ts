@@ -22,6 +22,7 @@ export interface CricsheetPlayerEnrichmentFile {
 
 export interface CricsheetPlayerEnrichmentLookup {
     resolveByRegistryHash(hash: string): CricsheetEnrichedPlayer;
+    size(): number;
 }
 
 export class InMemoryCricsheetPlayerEnrichmentLookup implements CricsheetPlayerEnrichmentLookup {

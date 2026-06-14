@@ -3,6 +3,7 @@ import { join } from "path";
 import "@/config/load-env";
 import { createCricsheetsProvider } from "@/contexts/ingestion/adapters/cricsheets/provider";
 import { loadCricsheetPlayerEnrichment } from "@/contexts/ingestion/adapters/cricsheets/player-enrichment";
+import { CricsheetsMatchMapper } from "@/contexts/ingestion/adapters/cricsheets/cricsheets-match-mapper";
 import { CricsheetsClient } from "@/contexts/ingestion/adapters/cricsheets/client";
 import { Match } from "@/contexts/match/domain/models/match";
 import { IngestionDependencies } from "@/contexts/ingestion/domain/ingestion-dependencies";
@@ -67,7 +68,8 @@ async function main(): Promise<void> {
     const playerEnrichment = loadCricsheetPlayerEnrichment(enrichmentPath);
     const { dependencies, counts, close } = await createDependencies();
     const client = createLocalCricsheetsClient(matchPath);
-    const provider = createCricsheetsProvider(dependencies, client, playerEnrichment);
+    const mapper = new CricsheetsMatchMapper(playerEnrichment);
+    const provider = createCricsheetsProvider(dependencies, client, mapper);
 
     try {
         console.log(`Loaded ${playerEnrichment.size()} enriched players from ${enrichmentPath}`);

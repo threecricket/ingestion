@@ -128,13 +128,11 @@ export class IngestMatchUseCase {
 
             let teamRuns = 0;
             let teamWickets = 0;
-            let ballNumber = 0;
+            let ballNumber = 1;
             let lastOver = 0;
             let lastBall = 0;
 
             for (const delivery of inning.deliveries) {
-                ballNumber += 1;
-
                 const batterId = await this.resolvePlayerByName(
                     delivery.batterName,
                     registry,
@@ -158,20 +156,8 @@ export class IngestMatchUseCase {
                 const isNoBall = delivery.extras?.noballs !== undefined;
                 const isLegalDelivery = !isWide && !isNoBall;
 
-                teamRuns += delivery.runs.total;
-
                 const batter = this.getBatterStats(batterStats, batterId);
-                batter.runs += delivery.runs.batter;
-                if (!isWide) {
-                    batter.balls += 1;
-                }
-
                 const bowler = this.getBowlerStats(bowlerStats, bowlerId);
-                bowler.runs += delivery.runs.total;
-                if (isLegalDelivery) {
-                    bowler.balls += 1;
-                }
-
                 const nonStriker = this.getBatterStats(batterStats, nonStrikerId);
 
                 let playerOutId: string | null = null;
@@ -187,11 +173,6 @@ export class IngestMatchUseCase {
                         command,
                     );
                     wicketType = command.mapWicketType(wicket.kind);
-                    teamWickets += 1;
-
-                    if (command.isBowlerWicket(wicket.kind)) {
-                        bowler.wickets += 1;
-                    }
                 }
 
                 const ballResult = BallResult.create(
@@ -221,9 +202,28 @@ export class IngestMatchUseCase {
                     ballResult,
                 ));
 
+                teamRuns += delivery.runs.total;
+                batter.runs += delivery.runs.batter;
+                if (isLegalDelivery) {
+                    batter.balls += 1;
+                }
+
+                bowler.runs += delivery.runs.total;
+                bowler.balls += 1;
+
+                if (wicket) {
+                    teamWickets += 1;
+
+                    if (command.isBowlerWicket(wicket.kind)) {
+                        bowler.wickets += 1;
+                    }
+                }
+
                 const [overValue, ballValue] = delivery.actualDelivery.split(".").map(Number);
                 lastOver = overValue;
                 lastBall = ballValue;
+
+                ballNumber += isLegalDelivery ? 1 : 0;
             }
 
             const { overs, balls } = this.parseDeliveryPosition(lastOver, lastBall, command.ballsPerOver);

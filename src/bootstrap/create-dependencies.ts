@@ -10,6 +10,9 @@ import { ResolveTeamUseCase } from "@/contexts/team/application/resolve-team";
 import { ResolvePlayerUseCase } from "@/contexts/player/application/resolve-player";
 import { IngestMatchUseCase } from "@/contexts/match/application/ingest-match";
 import { IngestionDependencies } from "@/contexts/ingestion/domain/ingestion-dependencies";
+import { ComputeMatchStatisticUseCase } from "@/contexts/statistic/application/compute-match-statistic";
+import { MatchStatisticComputerRegistry } from "@/contexts/statistic/domain/statistics/match-statistic-registry";
+import { MatchStatisticsRepository } from "@/contexts/statistic/domain/repository/match-statistics-repository";
 import { PostgresVenueRepository } from "@/contexts/venue/infrastructure/postgres/venue-repository";
 import { PostgresPlayerRepository } from "@/contexts/player/infrastructure/postgres/player-repository";
 import { PostgresTeamRepository } from "@/contexts/team/infrastructure/postgres/team-repository";
@@ -18,6 +21,13 @@ import { createInMemoryVenueRepository } from "@/contexts/venue/infrastructure/m
 import { createInMemoryPlayerRepository } from "@/contexts/player/infrastructure/memory/player-repository";
 import { createInMemoryTeamRepository } from "@/contexts/team/infrastructure/memory/team-repository";
 import { createInMemoryMatchRepository } from "@/contexts/match/infrastructure/memory/match-repository";
+import { PostgresMatchStatisticsRepository } from "@/contexts/statistic/infrastructure/postgres/match-statistics-repository";
+import { PostgresMatchStatisticTypeRepository } from "@/contexts/statistic/infrastructure/postgres/match-statistic-type-repository";
+import { createInMemoryMatchStatisticsRepository } from "@/contexts/statistic/infrastructure/memory/match-statistics-repository";
+import { syncMatchStatisticTypes } from "@/contexts/statistic/application/sync-match-statistic-types";
+export interface StatisticsDependencies {
+    computeMatchStatistic: ComputeMatchStatisticUseCase;
+}
 
 function createIdentityServices(canonicalMappingRepository: InMemoryCanonicalMappingRepository | PostgresCanonicalMappingRepository) {
     const idGenerator = new FingerprintIdGenerator();
@@ -51,8 +61,16 @@ function createUseCases(
     return { resolveVenue, resolveTeam, resolvePlayer, ingestMatch };
 }
 
+function createStatisticServices(matchStatisticsRepository: MatchStatisticsRepository): StatisticsDependencies {
+    const computerRegistry = MatchStatisticComputerRegistry.createDefault();
+    const computeMatchStatistic = new ComputeMatchStatisticUseCase(matchStatisticsRepository, computerRegistry);
+
+    return { computeMatchStatistic };
+}
+
 export async function createPostgresDependencies(connectionString: string): Promise<{
     dependencies: IngestionDependencies;
+    statistics: StatisticsDependencies;
     close: () => Promise<void>;
 }> {
     const { db, pool } = createDatabaseClient(connectionString);
@@ -64,6 +82,9 @@ export async function createPostgresDependencies(connectionString: string): Prom
     const playerRepository = new PostgresPlayerRepository(db);
     const teamRepository = new PostgresTeamRepository(db);
     const matchRepository = new PostgresMatchRepository(db);
+    const matchStatisticsRepository = new PostgresMatchStatisticsRepository(db);
+    const matchStatisticTypeRepository = new PostgresMatchStatisticTypeRepository(db);
+    await syncMatchStatisticTypes(matchStatisticTypeRepository);
 
     const { ingestMatch } = createUseCases(
         entityResolver,
@@ -74,8 +95,11 @@ export async function createPostgresDependencies(connectionString: string): Prom
         matchRepository,
     );
 
+    const statistics = createStatisticServices(matchStatisticsRepository);
+
     return {
         dependencies: { ingestMatch },
+        statistics,
         close: async () => {
             await pool.end();
         },
@@ -84,7 +108,8 @@ export async function createPostgresDependencies(connectionString: string): Prom
 
 export function createMemoryDependencies(): {
     dependencies: IngestionDependencies;
-    counts: () => { players: number; teams: number; venues: number; matches: number };
+    statistics: StatisticsDependencies;
+    counts: () => { players: number; teams: number; venues: number; matches: number; matchStatistics: number };
 } {
     const canonicalMappingRepository = new InMemoryCanonicalMappingRepository();
     const { entityResolver, identityHasherFactory } = createIdentityServices(canonicalMappingRepository);
@@ -93,6 +118,7 @@ export function createMemoryDependencies(): {
     const playerStore = createInMemoryPlayerRepository();
     const teamStore = createInMemoryTeamRepository();
     const matchStore = createInMemoryMatchRepository();
+    const matchStatisticsStore = createInMemoryMatchStatisticsRepository();
 
     const { ingestMatch } = createUseCases(
         entityResolver,
@@ -103,13 +129,17 @@ export function createMemoryDependencies(): {
         matchStore.repository,
     );
 
+    const statistics = createStatisticServices(matchStatisticsStore.repository);
+
     return {
         dependencies: { ingestMatch },
+        statistics,
         counts: () => ({
             players: playerStore.count(),
             teams: teamStore.count(),
             venues: venueStore.count(),
             matches: matchStore.count(),
+            matchStatistics: matchStatisticsStore.count(),
         }),
     };
 }

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."wicket_type" ADD VALUE 'other';

@@ -13,6 +13,7 @@ export const wicketTypeEnum = pgEnum("wicket_type", [
     "run_out",
     "hit_wicket",
     "obstructing",
+    "other",
 ]);
 
 export const matches = pgTable("matches", {
@@ -64,6 +65,7 @@ export const balls = pgTable(
             .notNull()
             .references(() => matches.id, { onDelete: "cascade" }),
         inningNumber: integer("inning_number").notNull(),
+        deliverySequence: integer("delivery_sequence").notNull(),
         ballNumber: integer("ball_number").notNull(),
         runs: integer("runs").notNull(),
         wickets: integer("wickets").notNull(),
@@ -92,6 +94,6 @@ export const balls = pgTable(
         wicketType: wicketTypeEnum("wicket_type"),
     },
     (table) => [
-        primaryKey({ columns: [table.matchId, table.inningNumber, table.ballNumber] }),
+        primaryKey({ columns: [table.matchId, table.inningNumber, table.deliverySequence] }),
     ],
 );

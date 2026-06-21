@@ -29,7 +29,7 @@ async function main(): Promise<void> {
     const pipeline = await runIngestionPipeline();
 
     try {
-        const { enrichmentPath, enrichedPlayerCount, providerResults, counts } = pipeline.result;
+        const { enrichmentPath, enrichedPlayerCount, providerResults, statisticsComputed, counts } = pipeline.result;
 
         console.log(`Loaded ${enrichedPlayerCount} enriched players from ${enrichmentPath}`);
         console.log(`Running ${pipeline.providers.length} ingestion provider(s)...\n`);
@@ -56,11 +56,14 @@ async function main(): Promise<void> {
         if (counts) {
             const entityCounts = counts();
             console.log("Registered entities:");
-            console.log(`  Players: ${entityCounts.players}`);
-            console.log(`  Teams:   ${entityCounts.teams}`);
-            console.log(`  Venues:  ${entityCounts.venues}`);
-            console.log(`  Matches: ${entityCounts.matches}`);
+            console.log(`  Players:          ${entityCounts.players}`);
+            console.log(`  Teams:            ${entityCounts.teams}`);
+            console.log(`  Venues:           ${entityCounts.venues}`);
+            console.log(`  Matches:          ${entityCounts.matches}`);
+            console.log(`  Match statistics: ${entityCounts.matchStatistics}`);
         }
+
+        console.log(`Computed ${statisticsComputed} match statistic(s).`);
     } finally {
         if (pipeline.close) {
             await pipeline.close();

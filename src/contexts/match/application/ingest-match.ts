@@ -129,6 +129,7 @@ export class IngestMatchUseCase {
             let teamRuns = 0;
             let teamWickets = 0;
             let ballNumber = 1;
+            let deliverySequence = 1;
             let lastOver = 0;
             let lastBall = 0;
 
@@ -186,6 +187,7 @@ export class IngestMatchUseCase {
                 );
 
                 ballList.push(Ball.create(
+                    deliverySequence,
                     ballNumber,
                     teamRuns,
                     teamWickets,
@@ -223,6 +225,7 @@ export class IngestMatchUseCase {
                 lastOver = overValue;
                 lastBall = ballValue;
 
+                deliverySequence += 1;
                 ballNumber += isLegalDelivery ? 1 : 0;
             }
 

@@ -72,6 +72,7 @@ export class BallResult {
 }
 
 export class Ball {
+    private deliverySequence: number;
     private ballNumber: number;
     private runs: number;
     private wickets: number;
@@ -91,7 +92,8 @@ export class Ball {
 
     private ballResult: BallResult;
 
-    private constructor(ballNumber: number, runs: number, wickets: number, batterId: string, batterRuns: number, batterBalls: number, bowlerId: string, bowlerRuns: number, bowlerBalls: number, bowlerWickets: number, nonStrikerId: string, nonStrikerRuns: number, nonStrikerBalls: number, ballResult: BallResult) {
+    private constructor(deliverySequence: number, ballNumber: number, runs: number, wickets: number, batterId: string, batterRuns: number, batterBalls: number, bowlerId: string, bowlerRuns: number, bowlerBalls: number, bowlerWickets: number, nonStrikerId: string, nonStrikerRuns: number, nonStrikerBalls: number, ballResult: BallResult) {
+        this.deliverySequence = deliverySequence;
         this.ballNumber = ballNumber;
         this.runs = runs;
         this.wickets = wickets;
@@ -108,9 +110,10 @@ export class Ball {
         this.ballResult = ballResult;
     }
 
-    public static create(ballNumber: number, runs: number, wickets: number, batterId: string, batterRuns: number, batterBalls: number, bowlerId: string, bowlerRuns: number, bowlerBalls: number, bowlerWickets: number, nonStrikerId: string, nonStrikerRuns: number, nonStrikerBalls: number, ballResult: BallResult): Ball {
+    public static create(deliverySequence: number, ballNumber: number, runs: number, wickets: number, batterId: string, batterRuns: number, batterBalls: number, bowlerId: string, bowlerRuns: number, bowlerBalls: number, bowlerWickets: number, nonStrikerId: string, nonStrikerRuns: number, nonStrikerBalls: number, ballResult: BallResult): Ball {
         if (
-            !ballNumber
+            !deliverySequence
+            || !ballNumber
             || runs === undefined
             || wickets === undefined
             || !batterId
@@ -128,7 +131,11 @@ export class Ball {
             throw new Error("Invalid ball data");
         }
 
-        return new Ball(ballNumber, runs, wickets, batterId, batterRuns, batterBalls, bowlerId, bowlerRuns, bowlerBalls, bowlerWickets, nonStrikerId, nonStrikerRuns, nonStrikerBalls, ballResult);
+        return new Ball(deliverySequence, ballNumber, runs, wickets, batterId, batterRuns, batterBalls, bowlerId, bowlerRuns, bowlerBalls, bowlerWickets, nonStrikerId, nonStrikerRuns, nonStrikerBalls, ballResult);
+    }
+
+    public getDeliverySequence(): number {
+        return this.deliverySequence;
     }
 
     public getBallNumber(): number {

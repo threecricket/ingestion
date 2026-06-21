@@ -12,10 +12,12 @@ import {
 } from "@/contexts/ingestion/adapters/cricsheets/player-enrichment";
 import { createS3Client } from "@/contexts/ingestion/infrastructure/aws/s3-client";
 import { Provider, IngestionDependencies } from "@/contexts/ingestion/domain/ingestion-dependencies";
+import { StatisticsDependencies } from "@/bootstrap/create-dependencies";
 
 export interface AppDependencies {
     dependencies: IngestionDependencies;
-    counts?: () => { players: number; teams: number; venues: number; matches: number };
+    statistics: StatisticsDependencies;
+    counts?: () => { players: number; teams: number; venues: number; matches: number; matchStatistics: number };
     close?: () => Promise<void>;
 }
 

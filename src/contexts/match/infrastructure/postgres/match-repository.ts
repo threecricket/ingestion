@@ -35,7 +35,7 @@ export class PostgresMatchRepository implements MatchRepository {
             .select()
             .from(balls)
             .where(eq(balls.matchId, matchId))
-            .orderBy(asc(balls.inningNumber), asc(balls.ballNumber));
+            .orderBy(asc(balls.inningNumber), asc(balls.deliverySequence));
 
         return this.toMatch(matchRow, inningRows, ballRows);
     }
@@ -155,6 +155,7 @@ export class PostgresMatchRepository implements MatchRepository {
         );
 
         return Ball.create(
+            row.deliverySequence,
             row.ballNumber,
             row.runs,
             row.wickets,
@@ -177,6 +178,7 @@ export class PostgresMatchRepository implements MatchRepository {
         return {
             matchId,
             inningNumber,
+            deliverySequence: ball.getDeliverySequence(),
             ballNumber: ball.getBallNumber(),
             runs: ball.getRuns(),
             wickets: ball.getWickets(),

@@ -2,44 +2,37 @@ import { Match } from "@/contexts/match/domain/models/match";
 import { MatchStatistic, MatchStatisticType } from "../../models/match-statistic";
 import { EntityType } from "@/shared/identity/domain/models/entity-type";
 import { BaseMatchStatisticComputer } from "../match-statistic-computer";
-import { isLegalDelivery } from "../helpers/ball-utils";
+import { isLegalDelivery } from "../shared/ball-utils";
 
-export class PlayerGotOutStatistic extends BaseMatchStatisticComputer {
+export class PlayerRunsScoredStatistic extends BaseMatchStatisticComputer {
     private static readonly TYPE = MatchStatisticType.create(
-        "player_got_out",
-        "Got Out",
-        "Whether player was dismissed (1=true, 0=false)",
+        "player_runs_scored",
+        "Runs Scored",
+        "Runs scored by batter",
         EntityType.PLAYER,
     );
 
     public getType(): MatchStatisticType {
-        return PlayerGotOutStatistic.TYPE;
+        return PlayerRunsScoredStatistic.TYPE;
     }
 
     public compute(match: Match): MatchStatistic[] {
+        const runsByPlayer = new Map<string, number>();
         const ballsFacedByPlayer = new Map<string, number>();
-        const gotOutByPlayer = new Map<string, boolean>();
 
         for (const inning of match.getInnings()) {
             for (const ball of inning.getBallList()) {
                 const result = ball.getBallResult();
                 const batterId = ball.getBatterId();
-
+                runsByPlayer.set(batterId, (runsByPlayer.get(batterId) ?? 0) + result.getRuns());
                 if (isLegalDelivery(ball)) {
                     ballsFacedByPlayer.set(batterId, (ballsFacedByPlayer.get(batterId) ?? 0) + 1);
-                }
-
-                if (result.getOut()) {
-                    const playerOutId = result.getPlayerOutId();
-                    if (playerOutId) {
-                        gotOutByPlayer.set(playerOutId, true);
-                    }
                 }
             }
         }
 
-        return [...ballsFacedByPlayer.entries()]
-            .filter(([, ballsFaced]) => ballsFaced > 0)
-            .map(([playerId]) => this.createStatistic(match, playerId, gotOutByPlayer.get(playerId) ? 1 : 0));
+        return [...runsByPlayer.entries()]
+            .filter(([playerId]) => (ballsFacedByPlayer.get(playerId) ?? 0) > 0)
+            .map(([playerId, runs]) => this.createStatistic(match, playerId, runs));
     }
 }

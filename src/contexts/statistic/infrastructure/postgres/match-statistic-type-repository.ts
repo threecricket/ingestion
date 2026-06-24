@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { EntityType } from "@/shared/identity/domain/models/entity-type";
 import { MatchStatisticType } from "@/contexts/statistic/domain/models/match-statistic";
-import { MatchStatisticTypeRepository } from "@/contexts/statistic/domain/repository/match-statistic-type-repository";
+import { MatchStatisticTypeRepository } from "@/contexts/statistic/domain/repositories/match-statistic-type-repository";
 import { Database } from "@/shared/persistence/postgres/client";
 import { matchStatisticTypes } from "@/contexts/statistic/infrastructure/postgres/schema";
 

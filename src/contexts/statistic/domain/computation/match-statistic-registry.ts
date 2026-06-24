@@ -1,17 +1,8 @@
 import { MatchStatisticType } from "../models/match-statistic";
-import { ALL_MATCH_STATISTIC_COMPUTERS } from "./index";
 import { MatchStatisticComputer } from "./match-statistic-computer";
 
 export class MatchStatisticComputerRegistry {
     private readonly computers = new Map<string, MatchStatisticComputer>();
-
-    public static createDefault(): MatchStatisticComputerRegistry {
-        const registry = new MatchStatisticComputerRegistry();
-        for (const computer of ALL_MATCH_STATISTIC_COMPUTERS) {
-            registry.register(computer);
-        }
-        return registry;
-    }
 
     public register(computer: MatchStatisticComputer): void {
         const typeName = computer.getType().getName();

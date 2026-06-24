@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "enrich-players": "tsx script/enrich-cricsheet-players.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "test": "tsx --test $(find src -name '*.test.ts' | tr '\\n' ' ')"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",

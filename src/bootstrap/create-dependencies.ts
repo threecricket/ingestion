@@ -11,8 +11,9 @@ import { ResolvePlayerUseCase } from "@/contexts/player/application/resolve-play
 import { IngestMatchUseCase } from "@/contexts/match/application/ingest-match";
 import { IngestionDependencies } from "@/contexts/ingestion/domain/ingestion-dependencies";
 import { ComputeMatchStatisticUseCase } from "@/contexts/statistic/application/compute-match-statistic";
-import { MatchStatisticComputerRegistry } from "@/contexts/statistic/domain/statistics/match-statistic-registry";
-import { MatchStatisticsRepository } from "@/contexts/statistic/domain/repository/match-statistics-repository";
+import { ComputeWinProbabilities } from "@/contexts/statistic/application/compute-win-probabilities";
+import { createMatchStatisticComputerRegistry } from "@/contexts/statistic/application/register-match-statistic-computers";
+import { MatchStatisticsRepository } from "@/contexts/statistic/domain/repositories/match-statistics-repository";
 import { PostgresVenueRepository } from "@/contexts/venue/infrastructure/postgres/venue-repository";
 import { PostgresPlayerRepository } from "@/contexts/player/infrastructure/postgres/player-repository";
 import { PostgresTeamRepository } from "@/contexts/team/infrastructure/postgres/team-repository";
@@ -25,6 +26,8 @@ import { PostgresMatchStatisticsRepository } from "@/contexts/statistic/infrastr
 import { PostgresMatchStatisticTypeRepository } from "@/contexts/statistic/infrastructure/postgres/match-statistic-type-repository";
 import { createInMemoryMatchStatisticsRepository } from "@/contexts/statistic/infrastructure/memory/match-statistics-repository";
 import { syncMatchStatisticTypes } from "@/contexts/statistic/application/sync-match-statistic-types";
+import { ModelApiClient } from "@/contexts/statistic/infrastructure/model-api/model-api-client";
+import { ModelApiWinProbabilityPredictor } from "@/contexts/statistic/infrastructure/model-api/model-api-win-probability-predictor";
 export interface StatisticsDependencies {
     computeMatchStatistic: ComputeMatchStatisticUseCase;
 }
@@ -61,9 +64,24 @@ function createUseCases(
     return { resolveVenue, resolveTeam, resolvePlayer, ingestMatch };
 }
 
+function createComputeWinProbabilities(): ComputeWinProbabilities | null {
+    const modelApiUrl = process.env.MODEL_API_URL?.trim();
+    if (!modelApiUrl) {
+        return null;
+    }
+
+    const predictor = new ModelApiWinProbabilityPredictor(new ModelApiClient(modelApiUrl));
+    return new ComputeWinProbabilities(predictor);
+}
+
 function createStatisticServices(matchStatisticsRepository: MatchStatisticsRepository): StatisticsDependencies {
-    const computerRegistry = MatchStatisticComputerRegistry.createDefault();
-    const computeMatchStatistic = new ComputeMatchStatisticUseCase(matchStatisticsRepository, computerRegistry);
+    const computerRegistry = createMatchStatisticComputerRegistry();
+    const computeWinProbabilities = createComputeWinProbabilities();
+    const computeMatchStatistic = new ComputeMatchStatisticUseCase(
+        matchStatisticsRepository,
+        computerRegistry,
+        computeWinProbabilities,
+    );
 
     return { computeMatchStatistic };
 }
@@ -85,6 +103,11 @@ export async function createPostgresDependencies(connectionString: string): Prom
     const matchStatisticsRepository = new PostgresMatchStatisticsRepository(db);
     const matchStatisticTypeRepository = new PostgresMatchStatisticTypeRepository(db);
     await syncMatchStatisticTypes(matchStatisticTypeRepository);
+
+    const modelApiUrl = process.env.MODEL_API_URL?.trim();
+    if (!modelApiUrl) {
+        throw new Error("MODEL_API_URL is required when PERSISTENCE=postgres");
+    }
 
     const { ingestMatch } = createUseCases(
         entityResolver,

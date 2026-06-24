@@ -2,7 +2,7 @@ import { Match } from "@/contexts/match/domain/models/match";
 import { MatchStatistic, MatchStatisticType } from "../../models/match-statistic";
 import { EntityType } from "@/shared/identity/domain/models/entity-type";
 import { BaseMatchStatisticComputer } from "../match-statistic-computer";
-import { isLegalDelivery } from "../helpers/ball-utils";
+import { isLegalDelivery } from "../shared/ball-utils";
 
 export class PlayerBallsFacedStatistic extends BaseMatchStatisticComputer {
     private static readonly TYPE = MatchStatisticType.create(

@@ -1,4 +1,4 @@
-import { integer, pgTable, primaryKey, text, uuid } from "drizzle-orm/pg-core";
+import { doublePrecision, pgTable, primaryKey, text, uuid } from "drizzle-orm/pg-core";
 import { entityTypeEnum } from "@/shared/identity/infrastructure/persistence/postgres/schema";
 import { matches } from "@/contexts/match/infrastructure/postgres/schema";
 
@@ -20,7 +20,7 @@ export const matchStatistics = pgTable(
             .references(() => matchStatisticTypes.name),
         entityType: entityTypeEnum("entity_type").notNull(),
         entityId: uuid("entity_id").notNull(),
-        value: integer("value").notNull(),
+        value: doublePrecision("value").notNull(),
     },
     (table) => [
         primaryKey({ columns: [table.matchId, table.statisticTypeName, table.entityId] }),

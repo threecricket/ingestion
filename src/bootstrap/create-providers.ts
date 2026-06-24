@@ -4,13 +4,12 @@ import {
     createPostgresDependencies,
 } from "@/bootstrap/create-dependencies";
 import { createCricsheetsProvider } from "@/contexts/ingestion/adapters/cricsheets/provider";
-import { CricsheetsClient } from "@/contexts/ingestion/adapters/cricsheets/client";
 import { CricsheetsMatchMapper } from "@/contexts/ingestion/adapters/cricsheets/cricsheets-match-mapper";
 import {
     CricsheetPlayerEnrichmentLookup,
     loadCricsheetPlayerEnrichment,
 } from "@/contexts/ingestion/adapters/cricsheets/player-enrichment";
-import { createS3Client } from "@/contexts/ingestion/infrastructure/aws/s3-client";
+import { createCricsheetsMatchSourceFromEnv } from "@/contexts/ingestion/infrastructure/cricsheets/create-cricsheets-match-source";
 import { Provider, IngestionDependencies } from "@/contexts/ingestion/domain/ingestion-dependencies";
 import { StatisticsDependencies } from "@/bootstrap/create-dependencies";
 
@@ -36,21 +35,13 @@ export async function createAppDependencies(): Promise<AppDependencies> {
     return createMemoryDependencies();
 }
 
-function createCricsheetsClient(): CricsheetsClient {
-    if (!process.env.CRICSHEETS_BUCKET_NAME) {
-        throw new Error("CRICSHEETS_BUCKET_NAME is required");
-    }
-
-    return new CricsheetsClient(createS3Client());
-}
-
 function createCricsheetsProviderFromDependencies(
     dependencies: IngestionDependencies,
     playerEnrichment: CricsheetPlayerEnrichmentLookup,
 ): Provider {
-    const client = createCricsheetsClient();
+    const matchSource = createCricsheetsMatchSourceFromEnv();
     const mapper = new CricsheetsMatchMapper(playerEnrichment);
-    return createCricsheetsProvider(dependencies, client, mapper);
+    return createCricsheetsProvider(dependencies, matchSource, mapper);
 }
 
 export function createProviders(

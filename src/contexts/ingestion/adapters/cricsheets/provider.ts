@@ -1,11 +1,11 @@
 import { Provider, IngestionDependencies } from "@/contexts/ingestion/domain/ingestion-dependencies";
 import { CricsheetsMatchIngestionStrategy } from "@/contexts/ingestion/adapters/cricsheets/ingestion-strategy";
-import { CricsheetsClient } from "@/contexts/ingestion/adapters/cricsheets/client";
+import { CricsheetsMatchSource } from "@/contexts/ingestion/adapters/cricsheets/ports/cricsheets-match-source";
 import { CricsheetsMatchMapper } from "@/contexts/ingestion/adapters/cricsheets/cricsheets-match-mapper";
 
 export const createCricsheetsProvider = (
     dependencies: IngestionDependencies,
-    client: CricsheetsClient,
+    matchSource: CricsheetsMatchSource,
     mapper: CricsheetsMatchMapper,
 ): Provider => {
     return Provider.create(
@@ -13,7 +13,7 @@ export const createCricsheetsProvider = (
         dependencies,
         (dependencies) => new CricsheetsMatchIngestionStrategy(
             dependencies.ingestMatch,
-            client,
+            matchSource,
             mapper,
         ),
     );

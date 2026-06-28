@@ -2,17 +2,19 @@ import { Match } from "@/contexts/match/domain/models/match";
 import { MatchStatisticsRepository } from "@/contexts/statistic/domain/repositories/match-statistics-repository";
 import { MatchStatistic } from "@/contexts/statistic/domain/models/match-statistic";
 import { MatchStatisticComputerRegistry } from "@/contexts/statistic/domain/computation/match-statistic-registry";
-import { MatchStatisticComputeContext } from "@/contexts/statistic/domain/computation/match-statistic-computer";
-import { isWinProbabilitySupportedFormat } from "@/contexts/statistic/domain/computation/shared/supported-formats";
 import { ComputeMatchStatisticCommand } from "./compute-match-statistic-command";
-import { ComputeWinProbabilities } from "./compute-win-probabilities";
 
 export class ComputeMatchStatisticUseCase {
     public constructor(
         private readonly matchStatisticsRepository: MatchStatisticsRepository,
         private readonly computerRegistry: MatchStatisticComputerRegistry,
-        private readonly computeWinProbabilities: ComputeWinProbabilities | null = null,
     ) {}
+
+    public async prepareAll(): Promise<void> {
+        for (const computer of this.computerRegistry.getAll()) {
+            await computer.prepare();
+        }
+    }
 
     public async execute(command: ComputeMatchStatisticCommand): Promise<MatchStatistic[]> {
         const { match, statisticType } = command;
@@ -23,31 +25,28 @@ export class ComputeMatchStatisticUseCase {
             throw new Error(`No match statistic computer registered for type: ${typeName}`);
         }
 
-        const context = await this.buildComputeContext(match);
-        const statistics = await Promise.resolve(computer.compute(match, context));
+        const statistics = await Promise.resolve(computer.compute(match));
         return this.persist(statistics);
     }
 
     public async computeAllForMatch(match: Match): Promise<MatchStatistic[]> {
-        const context = await this.buildComputeContext(match);
         const results: MatchStatistic[] = [];
 
         for (const computer of this.computerRegistry.getAll()) {
-            const statistics = await Promise.resolve(computer.compute(match, context));
-            const persisted = await this.persist(statistics);
-            results.push(...persisted);
+            const typeName = computer.getType().getName();
+            try {
+                const statistics = await Promise.resolve(computer.compute(match));
+                const persisted = await this.persist(statistics);
+                results.push(...persisted);
+            } catch (error) {
+                console.error(
+                    `Failed to compute statistic ${typeName} for match ${match.getMatchId()}, skipping:`,
+                    error,
+                );
+            }
         }
 
         return results;
-    }
-
-    private async buildComputeContext(match: Match): Promise<MatchStatisticComputeContext> {
-        if (!this.computeWinProbabilities || !isWinProbabilitySupportedFormat(match.getMatchFormat())) {
-            return {};
-        }
-
-        const winProbabilityByBallIndex = await this.computeWinProbabilities.computeForMatch(match);
-        return { winProbabilityByBallIndex };
     }
 
     private async persist(statistics: MatchStatistic[]): Promise<MatchStatistic[]> {

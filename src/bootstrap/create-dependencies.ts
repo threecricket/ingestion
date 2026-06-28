@@ -11,7 +11,6 @@ import { ResolvePlayerUseCase } from "@/contexts/player/application/resolve-play
 import { IngestMatchUseCase } from "@/contexts/match/application/ingest-match";
 import { IngestionDependencies } from "@/contexts/ingestion/domain/ingestion-dependencies";
 import { ComputeMatchStatisticUseCase } from "@/contexts/statistic/application/compute-match-statistic";
-import { ComputeWinProbabilities } from "@/contexts/statistic/application/compute-win-probabilities";
 import { createMatchStatisticComputerRegistry } from "@/contexts/statistic/application/register-match-statistic-computers";
 import { MatchStatisticsRepository } from "@/contexts/statistic/domain/repositories/match-statistics-repository";
 import { PostgresVenueRepository } from "@/contexts/venue/infrastructure/postgres/venue-repository";
@@ -27,7 +26,9 @@ import { PostgresMatchStatisticTypeRepository } from "@/contexts/statistic/infra
 import { createInMemoryMatchStatisticsRepository } from "@/contexts/statistic/infrastructure/memory/match-statistics-repository";
 import { syncMatchStatisticTypes } from "@/contexts/statistic/application/sync-match-statistic-types";
 import { ModelApiClient } from "@/contexts/statistic/infrastructure/model-api/model-api-client";
-import { ModelApiWinProbabilityPredictor } from "@/contexts/statistic/infrastructure/model-api/model-api-win-probability-predictor";
+import { ModelApiGateway } from "@/contexts/statistic/infrastructure/model-api/model-api-gateway";
+import { WinProbabilityService } from "@/contexts/statistic/domain/services/win-probability-service";
+import { WinProbabilityPredictor } from "@/contexts/statistic/domain/ports/win-probability-predictor";
 export interface StatisticsDependencies {
     computeMatchStatistic: ComputeMatchStatisticUseCase;
 }
@@ -64,23 +65,23 @@ function createUseCases(
     return { resolveVenue, resolveTeam, resolvePlayer, ingestMatch };
 }
 
-function createComputeWinProbabilities(): ComputeWinProbabilities | null {
+function createWinProbabilityPredictor(): WinProbabilityPredictor | null {
     const modelApiUrl = process.env.MODEL_API_URL?.trim();
     if (!modelApiUrl) {
         return null;
     }
 
-    const predictor = new ModelApiWinProbabilityPredictor(new ModelApiClient(modelApiUrl));
-    return new ComputeWinProbabilities(predictor);
+    const modelApiClient = new ModelApiClient(modelApiUrl);
+    const gateway = new ModelApiGateway(modelApiClient);
+    return new WinProbabilityService(gateway);
 }
 
 function createStatisticServices(matchStatisticsRepository: MatchStatisticsRepository): StatisticsDependencies {
-    const computerRegistry = createMatchStatisticComputerRegistry();
-    const computeWinProbabilities = createComputeWinProbabilities();
+    const winProbabilityPredictor = createWinProbabilityPredictor();
+    const computerRegistry = createMatchStatisticComputerRegistry(winProbabilityPredictor);
     const computeMatchStatistic = new ComputeMatchStatisticUseCase(
         matchStatisticsRepository,
         computerRegistry,
-        computeWinProbabilities,
     );
 
     return { computeMatchStatistic };

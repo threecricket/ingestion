@@ -153,6 +153,10 @@ export class IngestMatchUseCase {
                     command,
                 );
 
+                if (!batterId || !bowlerId || !nonStrikerId) {
+                    continue;
+                }
+
                 const isWide = delivery.extras?.wides !== undefined;
                 const isNoBall = delivery.extras?.noballs !== undefined;
                 const isLegalDelivery = !isWide && !isNoBall;
@@ -173,6 +177,9 @@ export class IngestMatchUseCase {
                         playerInternalIdsByName,
                         command,
                     );
+                    if (!playerOutId) {
+                        continue;
+                    }
                     wicketType = command.mapWicketType(wicket.kind);
                 }
 
@@ -252,7 +259,7 @@ export class IngestMatchUseCase {
         registry: Record<string, string>,
         playerInternalIdsByName: Map<string, string>,
         command: IngestMatchCommand,
-    ): Promise<string> {
+    ): Promise<string | null> {
         return this.resolvePlayer.resolveByName(
             playerName,
             registry,

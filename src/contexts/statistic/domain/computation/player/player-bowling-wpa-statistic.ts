@@ -1,7 +1,8 @@
 import { Match } from "@/contexts/match/domain/models/match";
 import { MatchStatistic, MatchStatisticType } from "../../models/match-statistic";
 import { EntityType } from "@/shared/identity/domain/models/entity-type";
-import { BaseMatchStatisticComputer, MatchStatisticComputeContext } from "../match-statistic-computer";
+import { WinProbabilityPredictor } from "@/contexts/statistic/domain/ports/win-probability-predictor";
+import { BaseMatchStatisticComputer } from "../match-statistic-computer";
 import { flattenMatchBalls } from "../shared/flatten-match-balls";
 import { isWinProbabilitySupportedFormat } from "../shared/supported-formats";
 import { computeBallImpacts } from "../shared/wpa-utils";
@@ -14,17 +15,25 @@ export class PlayerBowlingWpaStatistic extends BaseMatchStatisticComputer {
         EntityType.PLAYER,
     );
 
+    public constructor(private readonly winProbabilityPredictor: WinProbabilityPredictor | null = null) {
+        super();
+    }
+
     public getType(): MatchStatisticType {
         return PlayerBowlingWpaStatistic.TYPE;
     }
 
-    public compute(match: Match, context?: MatchStatisticComputeContext): MatchStatistic[] {
-        if (!isWinProbabilitySupportedFormat(match.getMatchFormat())) {
+    public override async prepare(): Promise<void> {
+        await this.winProbabilityPredictor?.prepare();
+    }
+
+    public async compute(match: Match): Promise<MatchStatistic[]> {
+        if (!this.winProbabilityPredictor || !isWinProbabilitySupportedFormat(match.getMatchFormat())) {
             return [];
         }
 
-        const winProbabilities = context?.winProbabilityByBallIndex;
-        if (!winProbabilities || winProbabilities.length === 0) {
+        const winProbabilities = await this.winProbabilityPredictor.predictForMatch(match);
+        if (winProbabilities.length === 0) {
             return [];
         }
 
@@ -35,7 +44,7 @@ export class PlayerBowlingWpaStatistic extends BaseMatchStatisticComputer {
             );
         }
 
-        const { bowlingImpact } = computeBallImpacts(winProbabilities);
+        const { bowlingImpact } = computeBallImpacts(winProbabilities, flattenedBalls, match);
         const wpaByPlayer = new Map<string, number>();
         const ballsBowledByPlayer = new Map<string, number>();
 

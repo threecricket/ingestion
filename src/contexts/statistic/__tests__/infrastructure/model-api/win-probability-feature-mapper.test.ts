@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { MatchFormat } from "@/contexts/match/domain/models/match";
 import { flattenMatchBalls } from "@/contexts/statistic/domain/computation/shared/flatten-match-balls";
-import { buildWinProbabilityFeatures } from "@/contexts/statistic/infrastructure/model-api/win-probability-feature-mapper";
+import { buildWinProbabilityFeatures } from "@/contexts/statistic/domain/services/win-probability-features";
 import { buildTestMatch } from "@/contexts/statistic/__tests__/fixtures/test-match-fixture";
 
 describe("win-probability-feature-mapper", () => {

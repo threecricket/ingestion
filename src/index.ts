@@ -26,19 +26,16 @@ function printMatchSummary(match: Match): void {
 }
 
 async function main(): Promise<void> {
+    console.log("Starting ingestion pipeline...\n");
     const pipeline = await runIngestionPipeline();
 
     try {
-        const { enrichmentPath, enrichedPlayerCount, providerResults, statisticsComputed, counts } = pipeline.result;
-
-        console.log(`Loaded ${enrichedPlayerCount} enriched players from ${enrichmentPath}`);
-        console.log(`Running ${pipeline.providers.length} ingestion provider(s)...\n`);
+        const { providerResults, statisticsComputed, counts } = pipeline.result;
 
         let totalMatches = 0;
 
         for (const { providerId, matches } of providerResults) {
-            console.log(`Provider: ${providerId}`);
-            console.log(`Ingested ${matches.length} match(es)\n`);
+            console.log(`\n--- ${providerId}: ${matches.length} match(es) ---\n`);
 
             for (const match of matches) {
                 printMatchSummary(match);
@@ -63,7 +60,7 @@ async function main(): Promise<void> {
             console.log(`  Match statistics: ${entityCounts.matchStatistics}`);
         }
 
-        console.log(`Computed ${statisticsComputed} match statistic(s).`);
+        console.log(`\nPipeline finished: ${totalMatches} match(es), ${statisticsComputed} statistic(s).`);
     } finally {
         if (pipeline.close) {
             await pipeline.close();

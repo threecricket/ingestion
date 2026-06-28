@@ -34,19 +34,26 @@ export class ResolvePlayerUseCase {
         registry: Record<string, string>,
         playerInternalIdsByName: Map<string, string>,
         resolveParams: (registryHash: string) => ResolvePlayerParams,
-    ): Promise<string> {
+    ): Promise<string | null> {
         const cachedId = playerInternalIdsByName.get(playerName);
         if (cachedId) {
             return cachedId;
         }
 
         if (!registry[playerName]) {
-            throw new Error(`Unknown player: ${playerName}`);
+            console.warn(`Skipping player "${playerName}": not found in registry`);
+            return null;
         }
 
-        const player = await this.execute(resolveParams(registry[playerName]));
-        const internalId = player.getPlayerId();
-        playerInternalIdsByName.set(playerName, internalId);
-        return internalId;
+        try {
+            const player = await this.execute(resolveParams(registry[playerName]));
+            const internalId = player.getPlayerId();
+            playerInternalIdsByName.set(playerName, internalId);
+            return internalId;
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.warn(`Skipping player "${playerName}": ${message}`);
+            return null;
+        }
     }
 }

@@ -1,1 +1,1 @@
-ALTER TYPE "public"."wicket_type" ADD VALUE 'other';
+ALTER TYPE "public"."wicket_type" ADD VALUE IF NOT EXISTS 'other';

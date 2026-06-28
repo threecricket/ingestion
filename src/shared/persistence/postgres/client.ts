@@ -10,7 +10,13 @@ export interface DatabaseClient {
 }
 
 export function createDatabaseClient(connectionString: string): DatabaseClient {
-    const pool = new pg.Pool({ connectionString });
+    const postgresSchema = process.env.POSTGRES_SCHEMA?.trim() || "public";
+    const pool = new pg.Pool({
+        connectionString,
+        ...(postgresSchema !== "public"
+            ? { options: `-c search_path=${postgresSchema}` }
+            : {}),
+    });
     const db = drizzle(pool, { schema });
     return { db, pool };
 }

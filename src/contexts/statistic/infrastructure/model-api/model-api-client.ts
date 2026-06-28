@@ -1,4 +1,4 @@
-import { PredictRequest, PredictResponse } from "./types";
+import { PredictRequest, PredictResponse, TrainRequest, TrainResponse } from "./types";
 
 export class ModelApiClient {
     public constructor(private readonly baseUrl: string) {}
@@ -16,5 +16,20 @@ export class ModelApiClient {
         }
 
         return response.json() as Promise<PredictResponse>;
+    }
+
+    public async train(request: TrainRequest): Promise<TrainResponse> {
+        const response = await fetch(`${this.baseUrl}/train`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(request),
+        });
+
+        if (!response.ok) {
+            const body = await response.text();
+            throw new Error(`model-api train failed (${response.status}): ${body}`);
+        }
+
+        return response.json() as Promise<TrainResponse>;
     }
 }

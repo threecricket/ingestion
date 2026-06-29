@@ -9,6 +9,7 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
         private readonly ingestMatch: IngestMatchUseCase,
         private readonly matchSource: CricsheetsMatchSource,
         private readonly mapper: CricsheetsMatchMapper,
+        private readonly minStartDate: Date,
     ) {}
 
     public async getMatches(): Promise<Match[]> {
@@ -27,6 +28,15 @@ export class CricsheetsMatchIngestionStrategy implements MatchIngestionStrategy 
                 const command = this.mapper.toIngestCommand(
                     matchObject as Parameters<CricsheetsMatchMapper["toIngestCommand"]>[0],
                 );
+
+                if (command.startDate.getTime() < this.minStartDate.getTime()) {
+                    console.log(
+                        `${progress} Skipping ${matchKey}: starts ${command.startDate.toISOString().slice(0, 10)}`
+                        + ` (before ${this.minStartDate.toISOString().slice(0, 10)})`,
+                    );
+                    continue;
+                }
+
                 const match = await this.ingestMatch.execute(command);
                 matches.push(match);
                 console.log(

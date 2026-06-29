@@ -10,9 +10,20 @@ import { ResolveTeamUseCase } from "@/contexts/team/application/resolve-team";
 import { ResolvePlayerUseCase } from "@/contexts/player/application/resolve-player";
 import { IngestMatchUseCase } from "@/contexts/match/application/ingest-match";
 import { IngestionDependencies } from "@/contexts/ingestion/domain/ingestion-dependencies";
+import { PlayerRepository } from "@/contexts/player/domain/repositories/player-repository";
 import { ComputeMatchStatisticUseCase } from "@/contexts/statistic/application/compute-match-statistic";
-import { createMatchStatisticComputerRegistry } from "@/contexts/statistic/application/register-match-statistic-computers";
+import { ComputePlayerRatingsUseCase } from "@/contexts/statistic/application/compute-player-ratings";
+import { PublishRatingNormsUseCase } from "@/contexts/statistic/application/publish-rating-norms";
+import { SyncCatalogueUseCase } from "@/contexts/statistic/application/sync-catalogue";
 import { MatchStatisticsRepository } from "@/contexts/statistic/domain/repositories/match-statistics-repository";
+import { MatchStatisticTypeRepository } from "@/contexts/statistic/domain/repositories/match-statistic-type-repository";
+import { PlayerRatingTypeRepository } from "@/contexts/statistic/domain/repositories/player-rating-type-repository";
+import { PlayerRatingsRepository } from "@/contexts/statistic/domain/repositories/player-ratings-repository";
+import { PlayerStatisticsQueryRepository } from "@/contexts/statistic/domain/repositories/player-statistics-query-repository";
+import { PerformanceGateway } from "@/contexts/statistic/domain/ports/performance-gateway";
+import { PerformanceApiClient } from "@/contexts/statistic/infrastructure/performance-api/performance-api-client";
+import { PerformanceApiGateway } from "@/contexts/statistic/infrastructure/performance-api/performance-api-gateway";
+import { createRatingNormsWriter } from "@/contexts/statistic/infrastructure/rating-norms/create-rating-norms-writer";
 import { PostgresVenueRepository } from "@/contexts/venue/infrastructure/postgres/venue-repository";
 import { PostgresPlayerRepository } from "@/contexts/player/infrastructure/postgres/player-repository";
 import { PostgresTeamRepository } from "@/contexts/team/infrastructure/postgres/team-repository";
@@ -23,14 +34,22 @@ import { createInMemoryTeamRepository } from "@/contexts/team/infrastructure/mem
 import { createInMemoryMatchRepository } from "@/contexts/match/infrastructure/memory/match-repository";
 import { PostgresMatchStatisticsRepository } from "@/contexts/statistic/infrastructure/postgres/match-statistics-repository";
 import { PostgresMatchStatisticTypeRepository } from "@/contexts/statistic/infrastructure/postgres/match-statistic-type-repository";
+import { PostgresPlayerRatingTypeRepository } from "@/contexts/statistic/infrastructure/postgres/player-rating-type-repository";
+import { PostgresPlayerRatingsRepository } from "@/contexts/statistic/infrastructure/postgres/player-ratings-repository";
+import { PostgresPlayerStatisticsQueryRepository } from "@/contexts/statistic/infrastructure/postgres/player-statistics-query-repository";
 import { createInMemoryMatchStatisticsRepository } from "@/contexts/statistic/infrastructure/memory/match-statistics-repository";
-import { syncMatchStatisticTypes } from "@/contexts/statistic/application/sync-match-statistic-types";
-import { ModelApiClient } from "@/contexts/statistic/infrastructure/model-api/model-api-client";
-import { ModelApiGateway } from "@/contexts/statistic/infrastructure/model-api/model-api-gateway";
-import { WinProbabilityService } from "@/contexts/statistic/domain/services/win-probability-service";
-import { WinProbabilityPredictor } from "@/contexts/statistic/domain/ports/win-probability-predictor";
+import { createInMemoryMatchStatisticTypeRepository } from "@/contexts/statistic/infrastructure/memory/match-statistic-type-repository";
+import { createInMemoryPlayerRatingTypeRepository } from "@/contexts/statistic/infrastructure/memory/player-rating-type-repository";
+import { createInMemoryPlayerRatingsRepository } from "@/contexts/statistic/infrastructure/memory/player-ratings-repository";
+
+const DEFAULT_RATING_NORMS_WINDOW_DAYS = 730;
+
 export interface StatisticsDependencies {
+    performanceGateway: PerformanceGateway;
+    syncCatalogue: SyncCatalogueUseCase;
     computeMatchStatistic: ComputeMatchStatisticUseCase;
+    publishRatingNorms: PublishRatingNormsUseCase | null;
+    computePlayerRatings: ComputePlayerRatingsUseCase | null;
 }
 
 function createIdentityServices(canonicalMappingRepository: InMemoryCanonicalMappingRepository | PostgresCanonicalMappingRepository) {
@@ -65,26 +84,68 @@ function createUseCases(
     return { resolveVenue, resolveTeam, resolvePlayer, ingestMatch };
 }
 
-function createWinProbabilityPredictor(): WinProbabilityPredictor | null {
-    const modelApiUrl = process.env.MODEL_API_URL?.trim();
-    if (!modelApiUrl) {
-        return null;
+function createPerformanceGateway(): PerformanceGateway {
+    const performanceApiUrl = process.env.PERFORMANCE_API_URL?.trim();
+    if (!performanceApiUrl) {
+        throw new Error("PERFORMANCE_API_URL is required");
     }
 
-    const modelApiClient = new ModelApiClient(modelApiUrl);
-    const gateway = new ModelApiGateway(modelApiClient);
-    return new WinProbabilityService(gateway);
+    return new PerformanceApiGateway(new PerformanceApiClient(performanceApiUrl));
 }
 
-function createStatisticServices(matchStatisticsRepository: MatchStatisticsRepository): StatisticsDependencies {
-    const winProbabilityPredictor = createWinProbabilityPredictor();
-    const computerRegistry = createMatchStatisticComputerRegistry(winProbabilityPredictor);
-    const computeMatchStatistic = new ComputeMatchStatisticUseCase(
-        matchStatisticsRepository,
-        computerRegistry,
+function getRatingNormsWindowDays(): number {
+    const raw = process.env.RATING_NORMS_WINDOW_DAYS?.trim();
+    const parsed = raw ? Number(raw) : NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_RATING_NORMS_WINDOW_DAYS;
+}
+
+interface StatisticServiceArgs {
+    performanceGateway: PerformanceGateway;
+    matchStatisticsRepository: MatchStatisticsRepository;
+    matchStatisticTypeRepository: MatchStatisticTypeRepository;
+    playerRatingTypeRepository: PlayerRatingTypeRepository;
+    playerRatingsRepository: PlayerRatingsRepository;
+    playerRepository: PlayerRepository;
+    playerStatisticsQueryRepository: PlayerStatisticsQueryRepository | null;
+}
+
+function createStatisticServices(args: StatisticServiceArgs): StatisticsDependencies {
+    const syncCatalogue = new SyncCatalogueUseCase(
+        args.performanceGateway,
+        args.matchStatisticTypeRepository,
+        args.playerRatingTypeRepository,
     );
 
-    return { computeMatchStatistic };
+    const computeMatchStatistic = new ComputeMatchStatisticUseCase(
+        args.matchStatisticsRepository,
+        args.performanceGateway,
+        args.playerRepository,
+    );
+
+    let publishRatingNorms: PublishRatingNormsUseCase | null = null;
+    let computePlayerRatings: ComputePlayerRatingsUseCase | null = null;
+
+    const ratingNormsWriter = createRatingNormsWriter();
+    if (args.playerStatisticsQueryRepository && ratingNormsWriter) {
+        publishRatingNorms = new PublishRatingNormsUseCase(
+            args.playerStatisticsQueryRepository,
+            ratingNormsWriter,
+            getRatingNormsWindowDays(),
+        );
+        computePlayerRatings = new ComputePlayerRatingsUseCase(
+            args.playerStatisticsQueryRepository,
+            args.performanceGateway,
+            args.playerRatingsRepository,
+        );
+    }
+
+    return {
+        performanceGateway: args.performanceGateway,
+        syncCatalogue,
+        computeMatchStatistic,
+        publishRatingNorms,
+        computePlayerRatings,
+    };
 }
 
 export async function createPostgresDependencies(connectionString: string): Promise<{
@@ -103,12 +164,9 @@ export async function createPostgresDependencies(connectionString: string): Prom
     const matchRepository = new PostgresMatchRepository(db);
     const matchStatisticsRepository = new PostgresMatchStatisticsRepository(db);
     const matchStatisticTypeRepository = new PostgresMatchStatisticTypeRepository(db);
-    await syncMatchStatisticTypes(matchStatisticTypeRepository);
-
-    const modelApiUrl = process.env.MODEL_API_URL?.trim();
-    if (!modelApiUrl) {
-        throw new Error("MODEL_API_URL is required when PERSISTENCE=postgres");
-    }
+    const playerRatingTypeRepository = new PostgresPlayerRatingTypeRepository(db);
+    const playerRatingsRepository = new PostgresPlayerRatingsRepository(db);
+    const playerStatisticsQueryRepository = new PostgresPlayerStatisticsQueryRepository(db);
 
     const { ingestMatch } = createUseCases(
         entityResolver,
@@ -119,7 +177,15 @@ export async function createPostgresDependencies(connectionString: string): Prom
         matchRepository,
     );
 
-    const statistics = createStatisticServices(matchStatisticsRepository);
+    const statistics = createStatisticServices({
+        performanceGateway: createPerformanceGateway(),
+        matchStatisticsRepository,
+        matchStatisticTypeRepository,
+        playerRatingTypeRepository,
+        playerRatingsRepository,
+        playerRepository,
+        playerStatisticsQueryRepository,
+    });
 
     return {
         dependencies: { ingestMatch },
@@ -133,7 +199,14 @@ export async function createPostgresDependencies(connectionString: string): Prom
 export function createMemoryDependencies(): {
     dependencies: IngestionDependencies;
     statistics: StatisticsDependencies;
-    counts: () => { players: number; teams: number; venues: number; matches: number; matchStatistics: number };
+    counts: () => {
+        players: number;
+        teams: number;
+        venues: number;
+        matches: number;
+        matchStatistics: number;
+        playerRatings: number;
+    };
 } {
     const canonicalMappingRepository = new InMemoryCanonicalMappingRepository();
     const { entityResolver, identityHasherFactory } = createIdentityServices(canonicalMappingRepository);
@@ -143,6 +216,9 @@ export function createMemoryDependencies(): {
     const teamStore = createInMemoryTeamRepository();
     const matchStore = createInMemoryMatchRepository();
     const matchStatisticsStore = createInMemoryMatchStatisticsRepository();
+    const matchStatisticTypeStore = createInMemoryMatchStatisticTypeRepository();
+    const playerRatingTypeStore = createInMemoryPlayerRatingTypeRepository();
+    const playerRatingsStore = createInMemoryPlayerRatingsRepository();
 
     const { ingestMatch } = createUseCases(
         entityResolver,
@@ -153,7 +229,15 @@ export function createMemoryDependencies(): {
         matchStore.repository,
     );
 
-    const statistics = createStatisticServices(matchStatisticsStore.repository);
+    const statistics = createStatisticServices({
+        performanceGateway: createPerformanceGateway(),
+        matchStatisticsRepository: matchStatisticsStore.repository,
+        matchStatisticTypeRepository: matchStatisticTypeStore.repository,
+        playerRatingTypeRepository: playerRatingTypeStore.repository,
+        playerRatingsRepository: playerRatingsStore.repository,
+        playerRepository: playerStore.repository,
+        playerStatisticsQueryRepository: null,
+    });
 
     return {
         dependencies: { ingestMatch },
@@ -164,6 +248,7 @@ export function createMemoryDependencies(): {
             venues: venueStore.count(),
             matches: matchStore.count(),
             matchStatistics: matchStatisticsStore.count(),
+            playerRatings: playerRatingsStore.count(),
         }),
     };
 }

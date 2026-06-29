@@ -12,11 +12,19 @@ import {
 import { createCricsheetsMatchSourceFromEnv } from "@/contexts/ingestion/infrastructure/cricsheets/create-cricsheets-match-source";
 import { Provider, IngestionDependencies } from "@/contexts/ingestion/domain/ingestion-dependencies";
 import { StatisticsDependencies } from "@/bootstrap/create-dependencies";
+import { resolveMinStartDate } from "@/config/ingestion-config";
 
 export interface AppDependencies {
     dependencies: IngestionDependencies;
     statistics: StatisticsDependencies;
-    counts?: () => { players: number; teams: number; venues: number; matches: number; matchStatistics: number };
+    counts?: () => {
+        players: number;
+        teams: number;
+        venues: number;
+        matches: number;
+        matchStatistics: number;
+        playerRatings: number;
+    };
     close?: () => Promise<void>;
 }
 
@@ -38,18 +46,20 @@ export async function createAppDependencies(): Promise<AppDependencies> {
 function createCricsheetsProviderFromDependencies(
     dependencies: IngestionDependencies,
     playerEnrichment: CricsheetPlayerEnrichmentLookup,
+    minStartDate: Date,
 ): Provider {
     const matchSource = createCricsheetsMatchSourceFromEnv();
     const mapper = new CricsheetsMatchMapper(playerEnrichment);
-    return createCricsheetsProvider(dependencies, matchSource, mapper);
+    return createCricsheetsProvider(dependencies, matchSource, mapper, minStartDate);
 }
 
 export function createProviders(
     dependencies: IngestionDependencies,
     playerEnrichment: CricsheetPlayerEnrichmentLookup,
+    minStartDate: Date = resolveMinStartDate(),
 ): Provider[] {
     return [
-        createCricsheetsProviderFromDependencies(dependencies, playerEnrichment),
+        createCricsheetsProviderFromDependencies(dependencies, playerEnrichment, minStartDate),
     ];
 }
 

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { BowlingStyle, Handedness, Player, Role } from "@/contexts/player/domain/models/player";
 import { PlayerRepository } from "@/contexts/player/domain/repositories/player-repository";
 import { Database } from "@/shared/persistence/postgres/client";
@@ -18,6 +18,19 @@ export class PostgresPlayerRepository implements PlayerRepository {
 
         const row = rows[0];
         return row ? this.toPlayer(row) : null;
+    }
+
+    public async findByIds(playerIds: string[]): Promise<Player[]> {
+        if (playerIds.length === 0) {
+            return [];
+        }
+
+        const rows = await this.db
+            .select()
+            .from(players)
+            .where(inArray(players.id, playerIds));
+
+        return rows.map((row) => this.toPlayer(row));
     }
 
     public async save(player: Player): Promise<void> {

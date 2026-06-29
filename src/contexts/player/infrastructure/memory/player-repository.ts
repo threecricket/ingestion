@@ -10,6 +10,9 @@ export function createInMemoryPlayerRepository(): {
     return {
         repository: {
             findById: async (id) => players.get(id) ?? null,
+            findByIds: async (ids) => ids
+                .map((id) => players.get(id))
+                .filter((player): player is Player => player !== undefined),
             save: async (player) => { players.set(player.getPlayerId(), player); },
         },
         count: () => players.size,

@@ -1,19 +1,11 @@
 import { MatchStatisticType } from "@/contexts/statistic/domain/models/match-statistic";
-import { MatchStatisticComputer } from "@/contexts/statistic/domain/computation/match-statistic-computer";
 import { MatchStatisticTypeRepository } from "@/contexts/statistic/domain/repositories/match-statistic-type-repository";
 
-export function createInMemoryMatchStatisticTypeRepository(
-    computers: MatchStatisticComputer[],
-): {
+export function createInMemoryMatchStatisticTypeRepository(): {
     repository: MatchStatisticTypeRepository;
     count: () => number;
 } {
-    const types = new Map<string, MatchStatisticType>(
-        computers.map((computer) => {
-            const matchStatisticType = computer.getType();
-            return [matchStatisticType.getName(), matchStatisticType] as const;
-        }),
-    );
+    const types = new Map<string, MatchStatisticType>();
 
     return {
         repository: {

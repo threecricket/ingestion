@@ -1,6 +1,22 @@
 import "@/config/load-env";
 import { Match } from "@/contexts/match/domain/models/match";
-import { runIngestionPipeline } from "@/bootstrap/ingestion-pipeline";
+import { runIngestionPipeline, StartPhase } from "@/bootstrap/ingestion-pipeline";
+
+function parseStartPhase(argv: string[]): StartPhase {
+    for (const arg of argv) {
+        const value = arg.startsWith("--from=")
+            ? arg.slice("--from=".length)
+            : undefined;
+        if (value === undefined) {
+            continue;
+        }
+        if (value === "ratings" || value === "ingest") {
+            return value;
+        }
+        throw new Error(`Invalid --from value "${value}" (expected "ingest" or "ratings").`);
+    }
+    return "ingest";
+}
 
 function printMatchSummary(match: Match): void {
     const result = match.getMatchResult();
@@ -26,11 +42,18 @@ function printMatchSummary(match: Match): void {
 }
 
 async function main(): Promise<void> {
+    const startFrom = parseStartPhase(process.argv.slice(2));
     console.log("Starting ingestion pipeline...\n");
-    const pipeline = await runIngestionPipeline();
+    const pipeline = await runIngestionPipeline({ startFrom });
 
     try {
-        const { providerResults, statisticsComputed, counts } = pipeline.result;
+        const {
+            providerResults,
+            statisticsComputed,
+            ratingsComputed,
+            ratingNormsVersion,
+            counts,
+        } = pipeline.result;
 
         let totalMatches = 0;
 
@@ -45,7 +68,7 @@ async function main(): Promise<void> {
             totalMatches += matches.length;
         }
 
-        if (totalMatches === 0) {
+        if (totalMatches === 0 && startFrom !== "ratings") {
             console.log("No matches ingested.");
             return;
         }
@@ -58,9 +81,14 @@ async function main(): Promise<void> {
             console.log(`  Venues:           ${entityCounts.venues}`);
             console.log(`  Matches:          ${entityCounts.matches}`);
             console.log(`  Match statistics: ${entityCounts.matchStatistics}`);
+            console.log(`  Player ratings:   ${entityCounts.playerRatings}`);
         }
 
-        console.log(`\nPipeline finished: ${totalMatches} match(es), ${statisticsComputed} statistic(s).`);
+        console.log(
+            `\nPipeline finished: ${totalMatches} match(es), ${statisticsComputed} statistic(s),`
+            + ` ${ratingsComputed} rating(s)`
+            + `${ratingNormsVersion ? ` (norms ${ratingNormsVersion})` : ""}.`,
+        );
     } finally {
         if (pipeline.close) {
             await pipeline.close();

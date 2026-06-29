@@ -7,6 +7,7 @@ export const createCricsheetsProvider = (
     dependencies: IngestionDependencies,
     matchSource: CricsheetsMatchSource,
     mapper: CricsheetsMatchMapper,
+    minStartDate: Date,
 ): Provider => {
     return Provider.create(
         "cricsheets",
@@ -15,6 +16,7 @@ export const createCricsheetsProvider = (
             dependencies.ingestMatch,
             matchSource,
             mapper,
+            minStartDate,
         ),
     );
 };
